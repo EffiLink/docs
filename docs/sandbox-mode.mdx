@@ -1,0 +1,135 @@
+---
+title: "Test API Calls Safely with EffiLink Sandbox Mode"
+sidebarTitle: "Sandbox Mode"
+description: "Use EffiLink sandbox mode to validate API requests end-to-end without sending emails, consuming credits, or creating real campaign tasks."
+---
+
+Sandbox mode lets you make real API calls to EffiLink without any side effects. The platform runs your request through its full validation pipeline — checking parameters, verifying the sender, resolving the template, and evaluating recipient data — but stops short of dispatching any email. No message reaches a recipient, no credits are deducted, and no campaign task is created.
+
+This makes sandbox mode the safest way to validate your integration, test new request shapes, and verify that a campaign is correctly configured before it goes live.
+
+---
+
+## How sandbox mode works
+
+When `sandboxMode: true` is present in a request body:
+
+1. EffiLink receives and parses the request normally.
+2. All parameter validation runs — required fields, format checks, length limits, sender verification, template resolution, and credit balance checks.
+3. If the request would succeed in production, EffiLink returns `{"code": 200, "message": ""}`.
+4. If the request would fail, EffiLink returns the same error code and message you would receive in production.
+5. No email is sent, no credits are consumed, and no campaign task is recorded.
+
+Think of it as a dry run: the outcome tells you exactly what would happen if you flipped `sandboxMode` to `false`.
+
+---
+
+## Quick example
+
+The following request sends a transactional email in sandbox mode:
+
+```bash
+curl -X POST https://api.effilink.co/v5/transactional/mail/sends_customised \
+  -H "ApiKey: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "Welcome to our platform",
+    "content": "<p>Hi {{firstName}}, thanks for signing up!</p>",
+    "senderMail": "hello@yourdomain.com",
+    "senderName": "Your App",
+    "to": {
+      "email": "test-user@example.com",
+      "name": "Test User"
+    },
+    "params": {
+      "firstName": "Test User"
+    },
+    "trackOpen": 1,
+    "trackClick": 1,
+    "sandboxMode": true
+  }'
+```
+
+**Success response** (request is valid — no email sent):
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+**Error response** (request would fail — same error as production):
+
+```json
+{
+  "code": 403,
+  "message": "Sender address not registered"
+}
+```
+
+---
+
+## What sandbox mode validates vs. skips
+
+| Checked in sandbox | Skipped in sandbox |
+| --- | --- |
+| All required parameters are present | Email delivery to recipient |
+| `sendDate` format and range | Credit deduction |
+| `senderMail` is registered | Campaign task creation |
+| Template exists (if `templateName` used) | Open / click tracking pixel injection |
+| Recipient address format | Webhook event emission |
+| Field length limits (`category`, `campaign`, `uniqueMsgID`, `senderName`) |  |
+| `replyTo` address format |  |
+| Credit balance sufficiency |  |
+| Attachment structure |  |
+
+<Note>
+  Because sandbox mode checks your credit balance, a `403 Insufficient credits` error in sandbox mode means the real send would also fail. Top up your account before switching to production.
+</Note>
+
+---
+
+## Which endpoints support sandbox mode
+
+Sandbox mode is supported on endpoints that list `sandboxMode` in their parameter documentation:
+
+- **Transactional email** — `POST /v5/transactional/mail/sends_customised`
+- **Campaign email** — `POST /v5/campaign/mail/sends`
+
+When sandbox mode is supported, the parameter appears in the endpoint's parameter list in the API reference. If an endpoint does not list `sandboxMode`, the parameter is silently ignored.
+
+---
+
+## Campaign sandbox example
+
+You can also validate a campaign send without dispatching or creating a task:
+
+```bash
+curl -X POST https://api.effilink.co/v5/campaign/mail/sends \
+  -H "ApiKey: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mailName": "Summer Sale 2024",
+    "senderMail": "promo@yourdomain.com",
+    "senderName": "Your Brand",
+    "subject": "Our biggest sale of the year",
+    "content": "<h1>Summer Sale</h1><p>Up to 60% off — today only.</p>",
+    "sendListNames": ["summer-subscribers"],
+    "repelListNames": ["unsubscribed"],
+    "sandboxMode": true
+  }'
+```
+
+---
+
+## Best practices
+
+<Tip>
+  Always run a sandbox request before your first production send to a new template, sender address, or contact list. This catches configuration errors — like an unregistered sender or a missing template — before they cause a failed send or a poor experience for your recipients.
+</Tip>
+
+- **Use sandbox in CI/CD pipelines.** Validate your API integration automatically on every deployment without worrying about accidental sends or credit consumption.
+- **Mirror your production payload exactly.** The closer your sandbox request is to your real request, the more meaningful the validation. Swap only the `sandboxMode` flag when you are ready to go live.
+- **Check for non-200 responses.** A `200` in sandbox means the request is ready for production. Any other code means there is something to fix first.
+- **Do not use sandbox as a substitute for staging.** Sandbox validates the API layer; test your email rendering and content in a real send to a test address before going live.

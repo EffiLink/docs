@@ -1,0 +1,263 @@
+---
+title: "Webhook Config API — Get and Save Webhook Settings"
+sidebarTitle: "Webhook Config"
+description: "Retrieve and update your EffiLink webhook configuration. Control enabled events, callback URLs, per-sender routing, and global enable/disable state."
+---
+
+## Authentication
+
+All endpoints accept either an `ApiKey` header or an `OAuth` header. See the [OAuth Endpoints](/api/oauth) page for token generation.
+
+---
+
+## Get Webhook Config
+
+<ParamField path="POST" type="string">
+  `/v5/webhook/get`
+</ParamField>
+
+Returns the current webhook configuration for your account, including enabled event types, callback URLs, and enabled state. No request body parameters are required.
+
+### Request Body
+
+This endpoint takes no parameters. Pass an empty JSON object (`{}`) as the request body.
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+<ResponseField name="transEvent" type="object">
+  Object indicating which event types are currently enabled for webhook delivery. Returns `null` if no configuration has been saved yet. Each key corresponds to an event type; `true` means notifications for that event are enabled.
+
+  <Expandable title="transEvent object">
+    <ResponseField name="dropped" type="boolean">
+      `true` if webhook notifications are enabled for dropped messages.
+    </ResponseField>
+
+    <ResponseField name="bounced" type="boolean">
+      `true` if webhook notifications are enabled for bounced messages.
+    </ResponseField>
+
+    <ResponseField name="delivered" type="boolean">
+      `true` if webhook notifications are enabled for delivered messages.
+    </ResponseField>
+
+    <ResponseField name="spamReport" type="boolean">
+      `true` if webhook notifications are enabled for spam reports.
+    </ResponseField>
+
+    <ResponseField name="opened" type="boolean">
+      `true` if webhook notifications are enabled for opens.
+    </ResponseField>
+
+    <ResponseField name="clicked" type="boolean">
+      `true` if webhook notifications are enabled for link clicks.
+    </ResponseField>
+
+    <ResponseField name="unsubscribed" type="boolean">
+      `true` if webhook notifications are enabled for unsubscribes.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="transCallbackUrl" type="string">
+  Default callback URL that receives webhook payloads for all senders without a specific override. Returns `null` if not configured.
+</ResponseField>
+
+<ResponseField name="transCallbackUrlExtra" type="array[object]">
+  Per-sender callback URL overrides. Each object routes events from a specific sender to a dedicated endpoint. Returns `null` if not configured.
+
+  <Expandable title="transCallbackUrlExtra object">
+    <ResponseField name="sender" type="string">
+      The sender email address this override applies to.
+    </ResponseField>
+
+    <ResponseField name="url" type="string">
+      The callback URL that receives events for this sender.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="transEnable" type="boolean">
+  `true` if webhook delivery is globally enabled; `false` if all webhooks are paused. Returns `null` if not configured.
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/webhook/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{}'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": "",
+  "transEvent": {
+    "dropped": true,
+    "bounced": true,
+    "delivered": true,
+    "spamReport": false,
+    "opened": true,
+    "clicked": true,
+    "unsubscribed": false
+  },
+  "transCallbackUrl": "https://yourapp.com/webhooks/effilink",
+  "transCallbackUrlExtra": [
+    {
+      "sender": "newsletter@yourdomain.com",
+      "url": "https://yourapp.com/webhooks/newsletter"
+    }
+  ],
+  "transEnable": true
+}
+```
+
+---
+
+## Save Webhook Config
+
+<ParamField path="POST" type="string">
+  `/v5/webhook/save`
+</ParamField>
+
+Updates one or more webhook configuration settings. All fields are optional — only the fields you include will be modified.
+
+### Request Body
+
+<ParamField body="transEvent" type="object">
+  Object controlling which event types trigger webhook notifications. Include only the keys you want to change; omitted keys retain their current values. Set a key to `true` to enable notifications for that event, or `false` to disable them.
+
+  <Expandable title="transEvent object">
+    <ParamField body="dropped" type="boolean">
+      Enable (`true`) or disable (`false`) webhook notifications for dropped messages.
+    </ParamField>
+
+    <ParamField body="bounced" type="boolean">
+      Enable (`true`) or disable (`false`) webhook notifications for bounced messages.
+    </ParamField>
+
+    <ParamField body="delivered" type="boolean">
+      Enable (`true`) or disable (`false`) webhook notifications for delivered messages.
+    </ParamField>
+
+    <ParamField body="spamReport" type="boolean">
+      Enable (`true`) or disable (`false`) webhook notifications for spam reports.
+    </ParamField>
+
+    <ParamField body="opened" type="boolean">
+      Enable (`true`) or disable (`false`) webhook notifications for opens.
+    </ParamField>
+
+    <ParamField body="clicked" type="boolean">
+      Enable (`true`) or disable (`false`) webhook notifications for link clicks.
+    </ParamField>
+
+    <ParamField body="unsubscribed" type="boolean">
+      Enable (`true`) or disable (`false`) webhook notifications for unsubscribes.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="transCallbackUrl" type="string">
+  Default callback URL to receive webhook payloads. Used for all senders that do not have a per-sender override. Must be an `http://` or `https://` URL.
+</ParamField>
+
+<ParamField body="transCallbackUrlExtra" type="array[object]">
+  Per-sender callback URL overrides. Behavior is controlled by `transCallbackUrlExtraUpdateMode`. To remove an existing override for a sender, pass that sender with an empty string `""` for `url`.
+
+  <Expandable title="transCallbackUrlExtra object">
+    <ParamField body="sender" type="string" required>
+      The sender email address this override applies to.
+    </ParamField>
+
+    <ParamField body="url" type="string">
+      The callback URL that should receive events for this sender. Must be an `http://` or `https://` URL. Pass an empty string to remove an existing override for this sender.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="transCallbackUrlExtraUpdateMode" type="string">
+  Determines how `transCallbackUrlExtra` entries are applied:
+
+  - `"save"` — Add new entries and update existing ones; all other entries are preserved. This is the default.
+  - `"replace"` — Replace the entire per-sender override list with the provided entries.
+</ParamField>
+
+<ParamField body="transEnable" type="boolean">
+  Set to `true` to enable webhook delivery globally, or `false` to pause all webhook notifications.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+<CodeGroup>
+
+```bash Enable webhooks and configure events
+curl --request POST \
+  --url https://api.effilink.co/v5/webhook/save \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "transEvent": {
+      "dropped": false,
+      "bounced": true,
+      "delivered": true,
+      "spamReport": false,
+      "opened": true,
+      "clicked": true,
+      "unsubscribed": false
+    },
+    "transCallbackUrl": "https://yourapp.com/webhooks/effilink",
+    "transEnable": true
+  }'
+```
+
+```bash Add a per-sender URL override
+curl --request POST \
+  --url https://api.effilink.co/v5/webhook/save \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "transCallbackUrlExtra": [
+      {
+        "sender": "alerts@yourdomain.com",
+        "url": "https://yourapp.com/webhooks/alerts"
+      }
+    ],
+    "transCallbackUrlExtraUpdateMode": "save"
+  }'
+```
+
+```bash Disable all webhook delivery
+curl --request POST \
+  --url https://api.effilink.co/v5/webhook/save \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "transEnable": false
+  }'
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```

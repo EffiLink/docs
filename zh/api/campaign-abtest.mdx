@@ -1,0 +1,180 @@
+---
+title: "营销活动 A/B 测试发送 "
+sidebarTitle: "A/B 测试"
+---
+
+## 概述
+
+A/B 测试营销 API 让您将联系人列表拆分为测试组，向每组发送不同的邮件内容，并在测试期结束后，自动将根据打开率或点击率决定的胜出版本投递给剩余联系人。
+
+`POST /v5/campaign/mail/sends_abtest`
+
+您最多可以定义 4 个额外的测试版本(包含主版本共 5 个)。每个版本可以改变主题、内容。
+
+---
+
+## 请求参数
+
+<ParamField body="mailName" type="string" required>
+  A/B 测试任务的名称。最大 200 字节。必须在您的团队内唯一。
+</ParamField>
+
+<ParamField body="subject" type="string" required>
+  主(对照)版本邮件的主题。
+</ParamField>
+
+<ParamField body="content" type="string" required>
+  主(对照)版本邮件的 HTML 正文内容。
+</ParamField>
+
+<ParamField body="senderName" type="string" required>
+  在"发件人"字段中向收件人显示的名称。
+</ParamField>
+
+<ParamField body="senderMail" type="string" required>
+  已验证的发件人邮箱地址。必须是您 EffiLink 账户中已完成验证的地址。
+</ParamField>
+
+<ParamField body="replyTo" type="string">
+  回复邮箱地址。
+</ParamField>
+
+<ParamField body="sendDate" type="string">
+  定时发送时间,采用 ISO 8601 UTC 格式(例如 `2025-06-01T10:00:00Z`)。不得晚于当前时间超过 30 天。省略则立即发送。
+</ParamField>
+
+<ParamField body="sendListNames" type="array[string]" required>
+  目标联系人列表名称数组。所有列表合并后的联系人总数至少为 10。
+
+  ```json
+  ["All Customers"]
+  ```
+</ParamField>
+
+<ParamField body="repelListNames" type="array[string]">
+  排除的联系人列表名称数组。这些列表中的收件人将被排除在发送之外。
+</ParamField>
+
+<ParamField body="abTestVersions" type="array[object]" required>
+  测试变体对象数组,定义除主版本外的 1 到 4 个额外版本(最多 5 个)。必须至少提供一个版本。
+
+  <Expandable title="abTestVersions[] 属性">
+    <ParamField body="subject" type="string">
+      此变体的主题。如果 `content` 也为空,则不能为空。
+    </ParamField>
+
+    <ParamField body="content" type="string">
+      此变体的 HTML 正文内容。如果 `subject` 也为空,则不能为空。
+    </ParamField>
+  </Expandable>
+
+  <Note>
+    每个版本必须至少设置 `subject` 或 `content` 之一。两个字段都为空的版本无效。
+  </Note>
+</ParamField>
+
+<ParamField body="timeLimit" type="int" required>
+  A/B 测试的持续时间(以小时为单位),测试结束后确定胜出版本并发送给剩余联系人。可接受范围:**1–100**。
+</ParamField>
+
+<ParamField body="percent" type="int" required>
+  分配给每个测试版本的联系人列表百分比。所有测试版本共享相同的百分比值,总分配(`percent × 版本数`)不得超过 100%。剩余联系人在测试期后接收胜出版本。
+
+  例如,2 个版本(主版本 + 1 个变体)且 `percent: 20`,每个版本触达 20% 的列表(合计 40%)。然后胜出版本会发送给剩余的 60%。
+</ParamField>
+
+<ParamField body="abTestType" type="string">
+  在测试期后用于确定胜出版本的指标。默认为 `open`。
+
+  | 值 | 胜出指标 |
+  | --- | --- |
+  | `open` | 最高唯一打开率 |
+  | `click` | 最高唯一点击率 |
+</ParamField>
+
+---
+
+## 响应
+
+<ResponseField name="code" type="int">
+  HTTP 风格的状态代码。成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  人类可读的状态消息。成功时为空字符串。
+</ResponseField>
+
+---
+
+## 错误代码
+
+| 代码 | 原因 |
+| --- | --- |
+| `400` | 缺少必填字段(`mailName`、`subject`、`content`、`senderName`、`senderMail`、`sendListNames`、`abTestVersions`、`timeLimit` 或 `percent`) |
+| `400` | `mailName` 超过 200 字节 |
+| `400` | `sendDate` 不是有效的 ISO 8601 UTC 格式 |
+| `400` | `sendListNames` 为空或合并联系人总数少于 10 |
+| `400` | `abTestVersions` 为空 |
+| `400` | 版本总数(主 + 变体)超过 5 |
+| `400` | 所有提供的 `abTestVersions` 的 `subject` 和 `content` 都为空 |
+| `400` | `timeLimit` 超出有效范围 1–100 小时 |
+| `400` | `percent` × 版本总数(主 + 变体)超过 100% |
+| `400` | `abTestType` 不是 `open` 或 `click` |
+| `403` | `sendDate` 早于当前时间超过 1 小时 |
+| `403` | `sendDate` 晚于当前时间超过 30 天 |
+| `500` | 任务创建过程中的内部服务器错误 |
+
+---
+
+## A/B 测试的工作原理
+
+1. **划分** — EffiLink 将您的联系人列表拆分为测试组。每个版本(包括主版本)接收 `percent`% 的总列表。
+2. **测试** — 所有版本在 `sendDate` 同时发送。测试运行 `timeLimit` 小时。
+3. **胜出** — 测试期后,根据 `abTestType` 指标(打开率或点击率)表现最佳的版本被宣布为胜出版本。
+4. **投递** — 胜出版本自动发送给所有未接收测试版本的剩余联系人。
+
+<Tip>
+  为获得具有统计意义的结果,请确保测试组规模足够大。当 `percent: 10` 且列表有 1,000 个联系人时,每个变体仅收到 100 个收件人,对于低量测试请考虑使用更大的列表或更高的百分比。
+</Tip>
+
+---
+
+## 请求示例
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/sends_abtest \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "mailName": "Subject Line A/B Test - June",
+    "subject": "看看我们最新的产品",
+    "content": "<p>浏览我们的新系列...</p>",
+    "senderName": "Your Company",
+    "senderMail": "marketing@yourdomain.com",
+    "sendListNames": ["All Customers"],
+    "abTestVersions": [
+      {"subject": "6 月新品,您一定会喜欢"}
+    ],
+    "timeLimit": 24,
+    "percent": 20,
+    "abTestType": "open"
+  }'
+```
+
+在此示例中:
+
+- **主版本**(`subject: "看看我们最新的产品"`)→ 发送给列表的 20%。
+- **变体 A**(`subject: "6 月新品,您一定会喜欢"`)→ 发送给另外的 20%。
+- **24 小时**后,打开率更高的版本发送给剩余的 **60%**。
+
+---
+
+## 响应示例
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```

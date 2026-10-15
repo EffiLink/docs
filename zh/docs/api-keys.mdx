@@ -1,0 +1,50 @@
+---
+title: "API 密钥"
+---
+
+API 密钥是向 EffiLink API 认证请求的最快方式。每个密钥都绑定到您的团队账户，非常适合后端服务、脚本，以及任何以您自己的 EffiLink 凭据运行的集成场景。
+
+<Note>
+  每个 EffiLink 团队默认最多可保留 **3 个 API 密钥**。如需更多密钥，请联系 EffiLink 客服。
+</Note>
+
+## 生成 API 密钥
+
+<Steps>
+  <Step title="打开设置">
+    登录您的 [EffiLink](app.effilink.co) 账户，然后点击控制台右上角的 **设置**。
+  </Step>
+  <Step title="进入 “接口配置”">
+    在设置菜单中点击 **API  Keys**，页面会展示您创建的所有 **API 密钥**。
+  </Step>
+  <Step title="创建新密钥">
+    点击 **创建 API Key**按钮。EffiLink 将生成一个**_新密钥_**并显示在页面上。
+  </Step>
+  <Step title="立即保存密钥">
+    复制完整密钥并妥善保管。**密钥的后半部分仅显示一次**，离开此页面后无法再次查看。如果丢失，需要删除该密钥并重新创建。
+  </Step>
+</Steps>
+
+## 对请求进行认证
+
+在每个 API 请求中添加 `ApiKey` 请求头，将 `YOUR_KEY` 替换为您生成的密钥：
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/transactional/mail/sends_customised \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: 3BTWNKN0ZDQIZBQ33XCO-VzNnMBUbDLloZkKMHqEeqg2byrNpVyrqf-XI1sAk' \
+  --data '{"data":"here"}'
+```
+
+对受保护的 EffiLink 端点的每个请求都必须包含此请求头。缺少有效 `ApiKey` 请求头的请求将收到 `401 Unauthorized` 响应。
+
+## 安全最佳实践
+
+<Warning>
+  **切勿在客户端代码、公开仓库或日志中暴露您的 API 密钥。** 请像对待密码一样对待它：
+
+  - 将其存储在环境变量或密钥管理器中（例如 AWS Secrets Manager、HashiCorp Vault）。
+  - 定期轮换密钥；一旦怀疑密钥泄露，应立即轮换。
+  - 在 **设置 → API 配置 → API 密钥** 中删除未使用的密钥，以缩小攻击面。
+</Warning>

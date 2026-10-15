@@ -1,0 +1,299 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "EffiLink",
+  "theme": "luma",
+  "favicon": {
+    "light": "https://media.brand.dev/7d2539d8-580b-4311-8e82-bb94f1c6d778.png",
+    "dark": "https://media.brand.dev/7d2539d8-580b-4311-8e82-bb94f1c6d778.png"
+  },
+  "colors": {
+    "primary": "#076dfc",
+    "light": "#7cb4fc",
+    "dark": "#076dfc"
+  },
+  "navbar": {
+    "primary": {
+      "type": "button",
+      "label": "Get API Key",
+      "href": "https://app.effilink.co/setting/apiKey"
+    },
+    "links": [
+      {
+        "href": "https://www.effilink.co/en",
+        "label": "Home"
+      },
+      {
+        "href": "https://app.effilink.co/yiyesso/memberlogin?lang=en_US",
+        "label": "Sign In"
+      }
+    ]
+  },
+  "navigation": {
+    "languages": [
+      {
+        "language": "en",
+        "tabs": [
+          {
+            "tab": "Documentation",
+            "groups": [
+              {
+                "group": "Get Started",
+                "pages": [
+                  "docs/overview",
+                  "docs/quickstart",
+                  "docs/key-concepts",
+                  "docs/mcp-server",
+                  "docs/mcp-action-server"
+                ]
+              },
+              {
+                "group": "Limits & Quotas",
+                "pages": [
+                  "docs/rate-limits",
+                  "docs/platform-quotas"
+                ]
+              },
+              {
+                "group": "Authentication",
+                "pages": [
+                  "docs/authentication",
+                  "docs/api-keys",
+                  "docs/oauth2"
+                ]
+              },
+              {
+                "group": "Email",
+                "pages": [
+                  "docs/transactional-email",
+                  "docs/campaign-email",
+                  "docs/smtp-integration",
+                  "docs/email-tracking",
+                  "docs/sandbox-mode"
+                ]
+              },
+              {
+                "group": "SMS",
+                "pages": [
+                  "docs/sms-send",
+                  "docs/sms-batch"
+                ]
+              },
+              {
+                "group": "Contacts & Lists",
+                "pages": [
+                  "docs/contacts",
+                  "docs/lists",
+                  "docs/contact-properties"
+                ]
+              },
+              {
+                "group": "Webhooks",
+                "pages": [
+                  "docs/webhooks",
+                  "docs/webhook-events"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "API Reference",
+            "groups": [
+              {
+                "group": "Transactional Email",
+                "pages": [
+                  "api/transactional-send",
+                  "api/transactional-batch",
+                  "api/transactional-report"
+                ]
+              },
+              {
+                "group": "Campaign Email",
+                "pages": [
+                  "api/campaign-sends",
+                  "api/campaign-abtest",
+                  "api/campaign-templates",
+                  "api/campaign-report"
+                ]
+              },
+              {
+                "group": "SMS",
+                "pages": [
+                  "api/sms-send",
+                  "api/sms-report"
+                ]
+              },
+              {
+                "group": "Contacts & Lists",
+                "pages": [
+                  "api/contacts",
+                  "api/lists",
+                  "api/senders"
+                ]
+              },
+              {
+                "group": "Webhooks",
+                "pages": [
+                  "api/webhook-config"
+                ]
+              },
+              {
+                "group": "Authentication",
+                "pages": [
+                  "api/oauth"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "language": "zh",
+        "tabs": [
+          {
+            "tab": "开发文档",
+            "groups": [
+              {
+                "group": "快速开始",
+                "pages": [
+                  "zh/docs/overview",
+                  "zh/docs/quickstart",
+                  "zh/docs/key-concepts",
+                  "zh/docs/mcp-server",
+                  "zh/docs/mcp-action-server"
+                ]
+              },
+              {
+                "group": "限额与配额",
+                "pages": [
+                  "zh/docs/rate-limits",
+                  "zh/docs/platform-quotas"
+                ]
+              },
+              {
+                "group": "身份验证",
+                "pages": [
+                  "zh/docs/authentication",
+                  "zh/docs/api-keys",
+                  "zh/docs/oauth2"
+                ]
+              },
+              {
+                "group": "邮件",
+                "pages": [
+                  "zh/docs/transactional-email",
+                  "zh/docs/campaign-email",
+                  "zh/docs/smtp-integration",
+                  "zh/docs/email-tracking",
+                  "zh/docs/sandbox-mode"
+                ]
+              },
+              {
+                "group": "短信",
+                "pages": [
+                  "zh/docs/sms-send",
+                  "zh/docs/sms-batch"
+                ]
+              },
+              {
+                "group": "联系人与组",
+                "pages": [
+                  "zh/docs/contacts",
+                  "zh/docs/lists",
+                  "zh/docs/contact-properties"
+                ]
+              },
+              {
+                "group": "Webhooks",
+                "pages": [
+                  "zh/docs/webhooks",
+                  "zh/docs/webhook-events"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "API 参考",
+            "groups": [
+              {
+                "group": "事务性邮件",
+                "pages": [
+                  "zh/api/transactional-send",
+                  "zh/api/transactional-batch",
+                  "zh/api/transactional-report"
+                ]
+              },
+              {
+                "group": "营销邮件",
+                "pages": [
+                  "zh/api/campaign-sends",
+                  "zh/api/campaign-abtest",
+                  "zh/api/campaign-templates",
+                  "zh/api/campaign-report"
+                ]
+              },
+              {
+                "group": "短信",
+                "pages": [
+                  "zh/api/sms-send",
+                  "zh/api/sms-report"
+                ]
+              },
+              {
+                "group": "联系人与名单",
+                "pages": [
+                  "zh/api/contacts",
+                  "zh/api/lists",
+                  "zh/api/senders"
+                ]
+              },
+              {
+                "group": "Webhooks",
+                "pages": [
+                  "zh/api/webhook-config"
+                ]
+              },
+              {
+                "group": "身份验证",
+                "pages": [
+                  "zh/api/oauth"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {}
+  },
+  "logo": {
+    "light": "/images/effilink-logo.png",
+    "dark": "/images/effilink-logo-dark.png",
+    "href": "https://developer.effilink.co/"
+  },
+  "description": "Al-Powered Growth Engine for Email Marketing, Automation, and Lead Intelligence.",
+  "interaction": {
+    "drilldown": true
+  },
+  "api": {
+    "params": {
+      "expanded": "all"
+    },
+    "examples": {
+      "prefill": false
+    }
+  },
+  "seo": {
+    "metatags": {
+      "author": "EffiLink",
+      "og:locale": "en_US",
+      "og:site_name": "EffiLink Developer Docs",
+      "og:type": "website",
+      "robots": "index, follow",
+      "theme-color": "#ffffff",
+      "twitter:card": "summary_large_image"
+    },
+    "indexing": "navigable"
+  }
+}

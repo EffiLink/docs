@@ -1,0 +1,157 @@
+---
+title: "Send SMS Messages — Bulk and Personalized Delivery"
+sidebarTitle: "Send SMS"
+description: "Send transactional or marketing SMS messages to up to 100 recipients per request, with global or per-recipient content and personalization tags."
+---
+
+## Overview
+
+The SMS Sends API lets you send transactional or marketing SMS messages to one or many recipients in a single request. You can use a global message and personalization tags for all recipients, or specify per-recipient content for fully customized batch sends.
+
+**Base URL:** `https://api.effilink.co`<br />**Endpoint:** `POST /v5/sms/sends`
+
+Authentication via `ApiKey` or `OAuth` header is required.
+
+<Note>
+  SMS content must match a pre-approved template registered with the relevant carrier or regulatory authority. Messages that do not comply with the approved template may be rejected. Maximum **100 recipients** per request.
+</Note>
+
+---
+
+## Content Priority
+
+When multiple content sources are provided, EffiLink resolves the final message for each recipient using the following priority order (highest to lowest):
+
+| Priority | Source |
+| --- | --- |
+| 1 (highest) | `toList[].templateName` — per-recipient template |
+| 2 | `toList[].content` — per-recipient inline content |
+| 3 | `templateName` — global template |
+| 4 (lowest) | `content` — global inline content |
+
+---
+
+## Request Parameters
+
+### Global Parameters
+
+<ParamField body="content" type="string">
+  The SMS message body, including your brand signature, applied to all recipients. Supports personalization tags (e.g., `{{code}}`, `{{name}}`). Required unless `templateName` is provided.
+
+  Example: `[YourBrand] Your verification code is {{code}}. Valid for 5 minutes.`
+</ParamField>
+
+<ParamField body="templateName" type="string">
+  The name of a globally registered SMS template to use as the message body for all recipients. Takes priority over the global `content` field when both are provided.
+</ParamField>
+
+<ParamField body="params" type="object">
+  A key-value map of personalization tag values applied to all recipients. Overridden by per-recipient `params` when both are present.
+
+  ```json
+  { "code": "123456" }
+  ```
+</ParamField>
+
+<ParamField body="toList" type="array[object]" required>
+  An array of recipient objects. Maximum 100 entries per request.
+
+  <Expandable title="toList[] properties">
+    <ParamField body="mobile" type="string" required>
+      The recipient's phone number. Include the country code for international numbers (e.g., `+818000012345` for Japan, `18800006666` for China).
+    </ParamField>
+
+    <ParamField body="content" type="string">
+      Per-recipient SMS message body. Overrides the global `content` field for this recipient. Takes lower priority than `toList[].templateName`.
+    </ParamField>
+
+    <ParamField body="templateName" type="string">
+      Per-recipient template name. Takes the highest priority over all other content sources for this recipient.
+    </ParamField>
+
+    <ParamField body="params" type="object">
+      Per-recipient personalization tag values. Overrides the global `params` for this recipient.
+
+      ```json
+      { "name": "Alice", "orderId": "ORD-001" }
+      ```
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  Set to `true` to run in sandbox mode. The request is processed and validated, but no SMS messages are actually delivered.
+</ParamField>
+
+---
+
+## Response
+
+<ResponseField name="code" type="int">
+  HTTP-style status code. `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable status message. Empty string on success.
+</ResponseField>
+
+---
+
+## Example: Simple Bulk Send
+
+Send the same message to multiple recipients using a global template and a shared personalization value.
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/sms/sends \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "content": "[YourBrand] Your verification code is {{code}}. Valid for 5 minutes.",
+    "params": {"code": "123456"},
+    "toList": [
+      {"mobile": "18800006666"},
+      {"mobile": "18800008888"}
+    ]
+  }'
+```
+
+Both recipients will receive:
+
+> `[YourBrand] Your verification code is 123456. Valid for 5 minutes.`
+
+---
+
+## Example: Personalized Batch Send
+
+Send a unique message to each recipient by providing per-recipient `params`.
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/sms/sends \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "content": "[YourBrand] Hi {{name}}, your order {{orderId}} has shipped.",
+    "toList": [
+      {"mobile": "18800006666", "params": {"name": "Alice", "orderId": "ORD-001"}},
+      {"mobile": "18800008888", "params": {"name": "Bob", "orderId": "ORD-002"}}
+    ]
+  }'
+```
+
+Each recipient receives a personalized message:
+
+- `18800006666`: `[YourBrand] Hi Alice, your order ORD-001 has shipped.`
+- `18800008888`: `[YourBrand] Hi Bob, your order ORD-002 has shipped.`
+
+---
+
+## Example Response
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```

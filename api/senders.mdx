@@ -1,0 +1,270 @@
+---
+title: "Verified Senders API — Add, Verify, and Manage Senders"
+sidebarTitle: "Senders"
+description: "Register, verify, and remove verified sender addresses in EffiLink. Check DNS record status for MX, SPF, DKIM, and DMARC validation."
+---
+
+## Authentication
+
+All endpoints accept either an `ApiKey` header or an `OAuth` header. See the [OAuth Endpoints](/api/oauth) page for token generation.
+
+---
+
+## Get Senders
+
+<ParamField path="POST" type="string">
+  `/v5/verified_senders/get`
+</ParamField>
+
+Returns all verified senders associated with your account, along with their DNS validation statuses. Optionally filter to a single sender address.
+
+### Request Body
+
+<ParamField body="senderEmail" type="string">
+  Filter results to a specific sender address. Omit this field (or pass an empty object) to retrieve all senders.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+<ResponseField name="mailFromDomains" type="array[object]">
+  Array of verified sender records.
+
+  <Expandable title="sender object">
+    <ResponseField name="from" type="string">
+      The sender email address (e.g. `noreply@yourdomain.com`).
+    </ResponseField>
+
+    <ResponseField name="fromDomain" type="string">
+      The sender email domain (e.g. `yourdomain.com`).
+    </ResponseField>
+
+    <ResponseField name="mxStatus" type="int">
+      MX record validation status. `1` = valid, `0` = invalid or unverified.
+    </ResponseField>
+
+    <ResponseField name="spfStatus" type="int">
+      SPF record validation status. `1` = valid, `0` = invalid or unverified.
+    </ResponseField>
+
+    <ResponseField name="dkimStatus" type="int">
+      DKIM record validation status. `1` = valid, `0` = invalid or unverified.
+    </ResponseField>
+
+    <ResponseField name="dmarcStatus" type="int">
+      DMARC record validation status. `1` = valid, `0` = invalid or unverified.
+    </ResponseField>
+
+    <ResponseField name="isValidate" type="int">
+      Overall validation flag. `1` = fully validated, `0` = pending or failed.
+    </ResponseField>
+
+    <ResponseField name="isYiyeDomain" type="int">
+      `1` if the domain is an EffiLink-managed domain; `0` if it is a custom domain.
+    </ResponseField>
+
+    <ResponseField name="senderType" type="int">
+      `1` = Marketing sender; `2` = Transactional sender.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```python
+curl --request POST \
+  --url https://api.effilink.co/v5/verified_senders/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{}'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": "",
+  "mailFromDomains": [
+    {
+      "from": "noreply@yourdomain.com",
+      "fromDomain": "yourdomain.com",
+      "mxStatus": 1,
+      "spfStatus": 1,
+      "dkimStatus": 1,
+      "dmarcStatus": 1,
+      "isValidate": 1,
+      "isYiyeDomain": 0,
+      "senderType": 2
+    }
+  ]
+}
+```
+
+---
+
+## Add Sender
+
+<ParamField path="POST" type="string">
+  `/v5/verified_senders/add`
+</ParamField>
+
+Registers a new sender email address for domain verification. The address must belong to a subdomain or non-top-level domain (e.g. `noreply@mail.yourdomain.com`).
+
+### Request Body
+
+<ParamField body="senderEmail" type="string" required>
+  The sender email address to register. Must be a non-top-level domain address (e.g. `noreply@yourdomain.com`).
+</ParamField>
+
+<ParamField body="senderType" type="string" required>
+  The intended use of this sender:
+
+  - `"1"` — Marketing emails.
+  - `"2"` — Transactional emails.
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  When `true`, the operation is simulated and no sender is registered.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/verified_senders/add \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "senderEmail": "noreply@yourdomain.com",
+    "senderType": "2"
+  }'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+---
+
+## Verify Sender Domain
+
+<ParamField path="POST" type="string">
+  `/v5/verified_senders/verify`
+</ParamField>
+
+Triggers a live DNS lookup to validate the MX, SPF, DKIM, and DMARC records for a registered sender address.
+
+### Request Body
+
+<ParamField body="fromDomain" type="string" required>
+  The sender address whose domain DNS records should be verified.
+</ParamField>
+
+<ParamField body="selector" type="string" required>
+  The DKIM selector string used when EffiLink published the DKIM public key for your domain (e.g. `effilink2024`).
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+<ResponseField name="valid" type="boolean">
+  `true` if all required DNS records passed validation.
+</ResponseField>
+
+<ResponseField name="goodMX" type="boolean">
+  `true` if the MX record is correctly configured.
+</ResponseField>
+
+<ResponseField name="goodSPF" type="boolean">
+  `true` if the SPF record is correctly configured.
+</ResponseField>
+
+<ResponseField name="goodDKIM" type="boolean">
+  `true` if the DKIM record is correctly configured for the given selector.
+</ResponseField>
+
+<ResponseField name="goodDMARC" type="boolean">
+  `true` if the DMARC record is correctly configured.
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/verified_senders/verify \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "fromDomain": "noreply@yourdomain.com",
+    "selector": "effilink2024"
+  }'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": "",
+  "valid": true,
+  "goodMX": true,
+  "goodSPF": true,
+  "goodDKIM": true,
+  "goodDMARC": true
+}
+```
+
+---
+
+## Delete Sender
+
+<ParamField path="POST" type="string">
+  `/v5/verified_senders/delete`
+</ParamField>
+
+Removes a verified sender address from your account. Emails already in transit are not affected.
+
+### Request Body
+
+<ParamField body="senderEmail" type="string" required>
+  The sender email address to remove.
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  When `true`, the operation is simulated and no sender is deleted.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```

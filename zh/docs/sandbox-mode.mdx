@@ -1,0 +1,135 @@
+---
+title: "沙盒模式安全测试 API 调用"
+sidebarTitle: "沙盒模式"
+description: "使用 EffiLink 沙盒模式完整验证 API 请求，而不实际发送邮件、消耗额度或创建真实的营销任务。"
+---
+
+沙箱模式让您可以向 EffiLink 发起真实的 API 调用而不产生任何副作用。平台会将请求送入完整的校验流程（参数检查、发件人验证、模板解析、收件人数据评估），但不会真正发送邮件。没有消息到达收件人，没有额度被扣除，也不会创建营销任务。
+
+这使沙箱模式成为校验集成、测试新请求结构，以及在营销活动上线前确认其配置的最安全方式。
+
+---
+
+## 沙箱模式的工作方式
+
+当请求体中包含 `sandboxMode: true` 时：
+
+1. EffiLink 正常接收并解析请求。
+2. 运行全部参数校验：必填字段、格式检查、长度限制、发件人验证、模板解析和额度余额检查。
+3. 如果请求在生产环境中会成功，EffiLink 返回 `{"code": 200, "message": ""}`。
+4. 如果请求会失败，EffiLink 返回与生产环境相同的错误码和消息。
+5. 不会发送邮件，不会消耗额度，也不会记录营销任务。
+
+可以将它视为一次演练：结果准确告诉您如果把 `sandboxMode` 改为 `false` 会发生什么。
+
+---
+
+## 快速示例
+
+以下请求以沙箱模式发送一封事务性邮件：
+
+```bash
+curl -X POST https://api.effilink.co/v5/transactional/mail/sends_customised \
+  -H "ApiKey: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "欢迎加入我们的平台",
+    "content": "<p>你好 {{firstName}}，感谢注册！</p>",
+    "senderMail": "hello@yourdomain.com",
+    "senderName": "您的应用",
+    "to": {
+      "email": "test-user@example.com",
+      "name": "Test User"
+    },
+    "params": {
+      "firstName": "Test User"
+    },
+    "trackOpen": 1,
+    "trackClick": 1,
+    "sandboxMode": true
+  }'
+```
+
+**成功响应**（请求有效，未发送邮件）：
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+**错误响应**（请求本会失败，返回与生产相同的错误）：
+
+```json
+{
+  "code": 403,
+  "message": "Sender address not registered"
+}
+```
+
+---
+
+## 沙箱模式的校验范围
+
+| 沙箱中会校验 | 沙箱中会跳过 |
+| --- | --- |
+| 所有必填参数是否齐全 | 邮件实际投递给收件人 |
+| `sendDate` 格式和范围 | 额度扣除 |
+| `senderMail` 是否已注册 | 营销任务的创建 |
+| 模板是否存在（若使用 `templateName`） | 打开/点击跟踪像素的插入 |
+| 收件人地址格式 | Webhook 事件的发出 |
+| 字段长度限制（`category`、`campaign`、`uniqueMsgID`、`senderName`） |  |
+| `replyTo` 地址格式 |  |
+| 额度余额是否充足 |  |
+| 附件结构 |  |
+
+<Note>
+  由于沙箱模式会检查额度余额，若沙箱中返回 `403 Insufficient credits`，则实际发送同样会失败。请在切换到生产环境前先为账户充值。
+</Note>
+
+---
+
+## 哪些端点支持沙箱模式
+
+在参数文档中列出 `sandboxMode` 的端点支持沙箱模式：
+
+- **事务性邮件**：`POST /v5/transactional/mail/sends_customised`
+- **营销邮件**：`POST /v5/campaign/mail/sends`
+
+支持沙箱模式时，该参数会出现在 API 参考中对应端点的参数列表里。如果端点未列出 `sandboxMode`，则该参数会被静默忽略。
+
+---
+
+## 营销活动沙箱示例
+
+您也可以在不发送、不创建任务的情况下校验营销发送：
+
+```bash
+curl -X POST https://api.effilink.co/v5/campaign/mail/sends \
+  -H "ApiKey: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mailName": "2024 夏季大促",
+    "senderMail": "promo@yourdomain.com",
+    "senderName": "您的品牌",
+    "subject": "年度最大力度促销",
+    "content": "<h1>夏季大促</h1><p>今日限定，最高 4 折。</p>",
+    "sendListNames": ["summer-subscribers"],
+    "repelListNames": ["unsubscribed"],
+    "sandboxMode": true
+  }'
+```
+
+---
+
+## 最佳实践
+
+<Tip>
+  首次向新模板、新发件人地址或新联系人列表发送前，请先运行一次沙箱请求。这样能提前捕获配置错误（例如未注册的发件人或不存在的模板），避免真实发送失败或影响收件人体验。
+</Tip>
+
+- **在 CI/CD 管道中使用沙箱**：在每次部署时自动校验 API 集成，无需担心误发或消耗额度。
+- **让请求尽量贴近生产载荷**：沙箱请求越接近真实请求，校验越有意义。上线时只需切换 `sandboxMode` 标志。
+- **检查非 200 响应**：沙箱返回 `200` 表示请求已具备上线条件；其他任何状态码都意味着需要先修复问题。
+- **不要用沙箱替代 staging**：沙箱只校验 API 层。上线前请通过向测试地址实际发送来验证邮件的渲染效果和内容。

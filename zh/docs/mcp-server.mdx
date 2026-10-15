@@ -1,0 +1,95 @@
+---
+title: "MCP 检索服务"
+sidebarTitle: "MCP 检索服务"
+description: "通过我们的 Model Context Protocol 服务，将 Claude、Cursor、ChatGPT 等 AI 工具连接到 EffiLink 文档。"
+---
+
+EffiLink 为本文档站点发布了一个 [Model Context Protocol](https://modelcontextprotocol.io)（MCP）服务。任何支持 MCP 的 AI 客户端都可以连接它，搜索本文档、读取完整页面，并基于最新的 EffiLink 内容回答问题，而不是仅依赖模型的训练数据。
+
+<Info>
+  该服务是**只读的**。它只搜索并返回文档内容 —— 不会代表你发送邮件或短信、创建联系人，也不会调用任何需要身份验证的 EffiLink API。如需发起真实的 API 调用，请使用MCP 发送服务（MCP Action Server )或者直接使用你的 API 密钥调用 [REST API](/api/transactional-send)。
+</Info>
+
+## 服务端地址
+
+```text
+https://developer.effilink.co/mcp
+```
+
+传输方式：**HTTP**。由于该服务仅提供公开文档内容，连接时无需身份验证。
+
+## 连接客户端
+
+<Tabs>
+  <Tab title="Claude">
+    1. 打开 **设置 → 连接器**（claude.ai）或你的 Claude 应用中的连接器设置。
+    2. 添加一个自定义连接器，粘贴上方的服务器地址。
+    3. Claude 现在可以在相关场景下自动搜索并引用 EffiLink 文档。
+  </Tab>
+  <Tab title="Cursor">
+    将该服务器添加到你的 MCP 配置中（通常位于 `~/.cursor/mcp.json`，或通过 **设置 → MCP** 添加）：
+
+    ```json
+    {
+      "mcpServers": {
+        "effilink": {
+          "url": "https://developer.effilink.co/mcp"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="ChatGPT">
+    1. 打开 **设置 → 连接器**。
+    2. 使用上方的服务器地址添加一个新连接器。
+    3. 在对话中启用它，让 ChatGPT 在对话过程中搜索 EffiLink 文档。
+  </Tab>
+  <Tab title="其他 MCP 客户端">
+    任何支持远程 HTTP MCP 服务器的客户端都可以使用同一地址连接。具体添加方式请参考你所用客户端的文档。
+  </Tab>
+</Tabs>
+
+## 服务能做什么
+
+该服务向已连接的 AI 客户端提供以下工具：
+
+<CardGroup cols={1}>
+  <Card title="search" icon="magnifying-glass">
+    在全部 EffiLink 文档中进行搜索，返回带标题和链接的相关片段。适合处理"发件人验证是如何工作的"这类宽泛或概念性的问题。
+  </Card>
+
+  <Card title="query_docs_filesystem" icon="folder-tree">
+    对文档和 OpenAPI 规范的沙盒化内存副本运行只读的类 Shell 命令（`rg`、`grep`、`cat`、`head`、`tree`、`jq` 等）。适合精确关键词匹配，或读取某个页面 / API 结构的完整内容，例如列出 OpenAPI 规范中的全部接口。
+  </Card>
+
+  <Card title="submit_feedback" icon="flag">
+    让 AI 代理代表你直接向 EffiLink 文档团队反馈文档问题 —— 内容错误、过时、含糊或不完整。
+  </Card>
+</CardGroup>
+
+该服务还发布了一个 **skill 资源**，描述了 AI 代理在何时应当想到使用 EffiLink：发送事务性消息（订单确认、密码重置、一次性验证码）、运营营销活动、管理联系人和名单，或通过 Webhook 消费投递与互动事件。即使你没有直接提到 EffiLink，这也能帮助 AI 工具识别出何时该使用它。
+
+## 示例提问
+
+连接后，你可以向 AI 客户端提出类似这样的问题：
+
+- "如何对 EffiLink API 的请求进行身份验证？"
+- "事务性邮件接口的速率限制是多少？"
+- "列出 EffiLink 支持的所有 Webhook 事件类型。"
+- "给我看看批量发送短信的请求体格式。"
+
+客户端会使用 `search` 和 `query_docs_filesystem` 工具，从最新的 EffiLink 文档中提取答案，并附上对应页面的链接。
+
+## 限制
+
+- **仅限公开内容。** 该服务只索引已发布的公开文档页面。
+- **不执行写操作。** 它无法发送消息、创建或修改联系人，也无法执行任何需要身份验证的操作 —— 这些操作只能通过你的 API 密钥，借助 [REST API](/api/transactional-send) 完成。
+- **存在速率限制。** EffiLink 会对该服务施加速率限制，以在高负载下保障其可用性。
+
+<Card title="想执行真实操作？" icon="bolt" href="/zh/docs/mcp-action-server">
+  查看 MCP 操作服务页面，了解如何使用自托管服务器，让 AI 客户端凭你自己的 API 密钥调用事务性消息 API —— 包括发送真实消息。
+</Card>
+
+<Card title="需要 API 密钥？" icon="key" href="https://app.effilink.co/setting/apiKey">
+  获取你的 EffiLink API 密钥，开始向 API 发起真实请求。
+</Card>

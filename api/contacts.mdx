@@ -1,0 +1,333 @@
+---
+title: "Contacts API — Upsert, Import, Retrieve, and Delete"
+sidebarTitle: "Contacts"
+description: "Create, update, bulk import, retrieve, and delete contacts via the EffiLink Contacts API. Supports list assignment and sandbox testing."
+---
+
+## Authentication
+
+All endpoints accept either an `ApiKey` header or an `OAuth` header. See the [OAuth Endpoints](/api/oauth) page for token generation.
+
+---
+
+## Upsert Contact
+
+<ParamField path="POST" type="string">
+  `/v5/contacts/upsert`
+</ParamField>
+
+Creates a new contact or updates an existing one. At least one of `email` or `phoneNumber` is required.
+
+### Request Body
+
+<ParamField body="name" type="string">
+  Display name for the contact. Defaults to the email address if omitted.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Email address of the contact. Required if `phoneNumber` is not provided.
+</ParamField>
+
+<ParamField body="phoneNumber" type="string" required>
+  Phone number of the contact. Required if `email` is not provided.
+</ParamField>
+
+<ParamField body="listName" type="string">
+  Name of an existing contact list to add this contact to after upserting.
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  When `true`, the operation is simulated and no data is persisted.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/contacts/upsert \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "phoneNumber": "18800008888",
+    "listName": "Newsletter Subscribers"
+  }'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+---
+
+## Bulk Import Contacts
+
+<ParamField path="POST" type="string">
+  `/v5/contacts/imports`
+</ParamField>
+
+Imports multiple contacts in a single request using a 2-D array format paired with a column-mapping definition.
+
+### Request Body
+
+<ParamField body="contactData" type="array[array]" required>
+  A two-dimensional array of contact values. Each inner array represents one contact row; column order must match `contactDataMapping`.
+</ParamField>
+
+<ParamField body="contactDataMapping" type="array[object]" required>
+  Describes which property each column maps to.
+
+  <Expandable title="contactDataMapping object">
+    <ParamField body="columnNum" type="int" required>
+      Zero-based index of the column in `contactData`.
+    </ParamField>
+
+    <ParamField body="propertyName" type="string" required>
+      Property identifier for the column (e.g. `email`, `name`). See the Contact Properties reference for valid values.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="updateMode" type="int" required>
+  Controls how existing contacts are handled:
+
+  - `1` — Create new contacts **and** update existing ones.
+  - `2` — Create new contacts only; skip existing ones.
+  - `3` — Update existing contacts only; skip new ones.
+</ParamField>
+
+<ParamField body="listName" type="string">
+  Name of a contact list to add all imported contacts to.
+</ParamField>
+
+<ParamField body="listDescription" type="string">
+  Description applied when a new list is created via `listName`.
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  When `true`, the operation is simulated and no data is persisted.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/contacts/imports \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "contactData": [
+      ["alice@example.com", "Alice Chen"],
+      ["bob@example.com", "Bob Wang"]
+    ],
+    "contactDataMapping": [
+      {"columnNum": 0, "propertyName": "email"},
+      {"columnNum": 1, "propertyName": "name"}
+    ],
+    "updateMode": 1,
+    "listName": "Q2 Campaign"
+  }'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+---
+
+## Get Contact
+
+<ParamField path="POST" type="string">
+  `/v5/contacts/get`
+</ParamField>
+
+Retrieves a single contact record by email address.
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  Email address of the contact to retrieve.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+<ResponseField name="contact" type="object">
+  The matched contact record.
+
+  <Expandable title="contact object">
+    <ResponseField name="id" type="string">
+      Unique identifier for the contact.
+    </ResponseField>
+
+    <ResponseField name="name" type="string">
+      Display name of the contact.
+    </ResponseField>
+
+    <ResponseField name="email" type="string">
+      Email address of the contact.
+    </ResponseField>
+
+    <ResponseField name="phoneNumber" type="string">
+      Phone number of the contact.
+    </ResponseField>
+
+    <ResponseField name="properties" type="object">
+      Key-value map of custom and system properties (e.g. `company`, `email_bounced_flag`, `email_open_count`). All values are strings.
+    </ResponseField>
+
+    <ResponseField name="createDate" type="string">
+      ISO 8601 timestamp of when the contact was created.
+    </ResponseField>
+
+    <ResponseField name="modifyTime" type="string">
+      ISO 8601 timestamp of the most recent update.
+    </ResponseField>
+
+    <ResponseField name="createUserId" type="int">
+      ID of the user who created the contact.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/contacts/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{"email": "alice@example.com"}'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": "",
+  "contact": {
+    "id": "653f663a17e04f6e5a263de6",
+    "name": "Alice Chen",
+    "email": "alice@example.com",
+    "phoneNumber": "18800008888",
+    "properties": {
+      "company": "Acme Inc",
+      "email_bounced_flag": "0",
+      "email_open_count": "5"
+    },
+    "createDate": "2024-01-15T08:00:00.000Z",
+    "modifyTime": "2025-04-21T05:53:01.089Z",
+    "createUserId": 42
+  }
+}
+```
+
+---
+
+## Get Contacts in List
+
+<ParamField path="POST" type="string">
+  `/v5/contacts/list/get`
+</ParamField>
+
+Returns a paginated list of contacts belonging to a named contact list.
+
+### Request Body
+
+<ParamField body="listName" type="string" required>
+  Name of the contact list to retrieve contacts from.
+</ParamField>
+
+<ParamField body="pageSize" type="int">
+  Number of contacts to return per page. Defaults to `200`; maximum is `1000`.
+</ParamField>
+
+<ParamField body="pageIndex" type="int">
+  One-based page number. Defaults to `1`.
+</ParamField>
+
+<ParamField body="teamName" type="string">
+  Query a list belonging to another team. Requires special cross-team permission.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+<ResponseField name="contactList" type="array[object]">
+  Array of contact records. Each object contains the same fields as the [Get Contact](#get-contact) response: `id`, `name`, `email`, `phoneNumber`, `properties`, `createDate`, `modifyTime`, and `createUserId`.
+</ResponseField>
+
+<ResponseField name="totalRecords" type="int">
+  Total number of contacts in the list across all pages.
+</ResponseField>
+
+---
+
+## Delete Contact
+
+<ParamField path="POST" type="string">
+  `/v5/contacts/delete`
+</ParamField>
+
+Permanently deletes a contact identified by email address.
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  Email address of the contact to delete.
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  When `true`, the operation is simulated and no data is deleted.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```

@@ -1,0 +1,113 @@
+---
+title: "MCP Action Server"
+sidebarTitle: "MCP Action Server"
+description: "A self-hosted MCP server that lets AI clients call the EffiLink Transactional Messaging API on your behalf."
+---
+
+<Info>
+  This is a **separate server** and this one is **self-hosted by you** and can perform real, authenticated actions — including sending real messages — using your own API key.
+</Info>
+
+## What it does
+
+This server exposes a single tool, **`call_api`**, which lets a connected AI client call the [Transactional Messaging API](/api-reference) directly — for example, sending a transactional email, sending a batch, or fetching a delivery report — without you having to write the request by hand.
+
+<Warning>
+  Because this server can take real, billable actions on your account, only install it where you intend that, and treat your API key with the same care you would in any backend service. Never share a running instance's access with people you don't trust with your account.
+</Warning>
+
+## How it works
+
+The server runs locally as a child process of your MCP client (stdio transport), not as a public endpoint. Your API key lives in an environment variable on your machine — the AI model itself never sees or handles the key. When the model calls `call_api`, the server attaches the key server-side and forwards the request to `https://api.effilink.co`.
+
+For safety, the server only allows paths under `/v5/transactional/`. A call to any other path is refused before a network request is made.
+
+## Setup
+
+<Steps>
+  <Step title="Get the server code">
+    Download the `effilink-mcp-server` project (`index.js`, `package.json`, `README.md`) and install dependencies:
+
+    ```bash
+    npm install
+    ```
+  </Step>
+  <Step title="Set your API key">
+    Get an API key from your [account settings](https://app.effilink.co/setting/apiKey), then export it as an environment variable:
+
+    ```bash
+    export EFFILINK_API_KEY="your_api_key_here"
+    ```
+  </Step>
+  <Step title="Add it to your MCP client">
+    Point your client at the server's entry file. For Claude Desktop or Cursor, add this to your MCP config:
+
+    ```json
+    {
+      "mcpServers": {
+        "effilink": {
+          "command": "node",
+          "args": ["/absolute/path/to/effilink-mcp-server/index.js"],
+          "env": {
+            "EFFILINK_API_KEY": "your_api_key_here"
+          }
+        }
+      }
+    }
+    ```
+  </Step>
+  <Step title="Test in sandbox mode">
+    Try a call with `sandboxMode: true` first — see the example below — so you can confirm everything is wired up correctly before sending anything real.
+  </Step>
+</Steps>
+
+## The `call_api` tool
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | string | yes | API path relative to `https://api.effilink.co`, must start with `/v5/transactional/` |
+| `method` | `GET` \| `POST` \| `PUT` \| `DELETE` | no (default `POST`) | HTTP method |
+| `body` | object | no | JSON request body |
+| `query` | object | no | Query string parameters |
+
+### Example: send a transactional email
+
+```json
+call_api({
+  "path": "/v5/transactional/mail/sends_customised",
+  "method": "POST",
+  "body": {
+    "subject": "Your order has shipped",
+    "content": "<p>Hello {{name}}, your order {{orderId}} has shipped!</p>",
+    "params": { "name": "Jane", "orderId": "ORD-5678" },
+    "senderMail": "noreply@yourdomain.com",
+    "senderName": "Your Store",
+    "to": { "email": "jane@example.com", "name": "Jane Smith" },
+    "trackOpen": 1,
+    "trackClick": 1,
+    "sandboxMode": true
+  }
+})
+```
+
+With `sandboxMode: true`, the request is validated end-to-end but no real email is sent — see [Sandbox Mode](/docs/sandbox-mode). Drop that flag once you're ready to send for real.
+
+## Example prompts
+
+Once connected, you could ask your AI client things like:
+
+- "Send a password reset email to [jane@example.com](mailto:jane@example.com) using our reset template."
+- "Send a batch of order confirmation emails to this list of customers." _(with the list provided in the conversation)_
+- "Look up the delivery status of message ID abc123."
+
+The client will call `call_api` with the correct path, method, and body based on the [API reference](/api-reference).
+
+## Limitations
+
+- **Scoped to Transactional Messaging.** Only `/v5/transactional/*` paths are allowed by default. Campaigns, SMS, and contacts endpoints aren't reachable unless you extend the `ALLOWED_PREFIX` in the server code.
+- **Local by default.** The server runs via stdio on your own machine — it isn't shared across a team unless you adapt it to run over HTTP with its own authentication layer in front.
+- **No built-in rate limiting beyond EffiLink's own API limits.** See [Limits & Quotas](/docs/rate-limits).
+
+<Card title="Looking for the read-only docs server?" icon="magnifying-glass" href="/docs/mcp-server">
+  See the MCP Server page for the server that lets AI tools search and cite EffiLink documentation.
+</Card>

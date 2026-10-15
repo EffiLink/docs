@@ -1,0 +1,259 @@
+---
+title: "EffiLink Webhook Event Types Reference"
+sidebarTitle: "Webhook Events"
+description: "Complete field reference for all 8 EffiLink webhook event types — Dropped, Bounced, Delivered, Opened, Clicked, Unsubscribed, SpamReport, and TaskStatus."
+---
+
+This page documents every event type that EffiLink can deliver to your webhook endpoint, including a description of when each event fires and a full table of the fields present in its payload. For setup instructions and general webhook behavior, see [Webhook Configuration](/docs/webhooks) .
+
+---
+
+## Batch delivery
+
+EffiLink delivers webhook events in batches. Each HTTP POST to your endpoint contains a JSON **array** of event objects — up to **1,000 events per push**. A single push may contain events of different types, so your handler should branch on the `EventCode` field of each object in the array.
+
+```json
+[
+  { "EventCode": "Delivered", ... },
+  { "EventCode": "Opened", ... },
+  { "EventCode": "Clicked", ... }
+]
+```
+
+---
+
+## Common fields
+
+The following fields appear across most or all event types. Individual events may include additional fields documented in their own sections below.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `EventCode` | string | Identifies the event type (e.g., `"Delivered"`, `"Opened"`). |
+| `Email` | string | Recipient email address. |
+| `EventType` | string | Campaign classification (e.g., `"Transactional"`, `"Marketing"`). |
+| `SentMailListName` | string | Name of the contact list the email was sent to. |
+| `TriggeredDateTimeV2` | datetime | UTC timestamp when the event occurred. |
+| `UniqueMsgID` | string | Unique identifier for the individual message. Use with `EventCode` as a composite key for idempotent processing. |
+| `Guid` | string | Campaign-level identifier. |
+| `MailName` | string | Display name of the email campaign. |
+
+---
+
+## Event types
+
+<AccordionGroup>
+  <Accordion title="Dropped — email not sent due to filter">
+    **EventCode:** `Dropped`
+
+    Fired when EffiLink prevents an email from being sent because the recipient's address is flagged by a suppression filter. The email is never submitted to the mail server.
+
+    **When it fires:** Before send, when `properties.email_bounced_flag` is non-zero on the contact record.
+
+    | Field | Type | Description |
+    | --- | --- | --- |
+    | `EventCode` | string | `"Dropped"` |
+    | `Email` | string | Recipient email address. |
+    | `EventType` | string | Campaign type. |
+    | `Reason` | int | Suppression reason code. See table below. |
+    | `SenderEmail` | string | Sending address used for this campaign. |
+    | `SentMailListName` | string | Target contact list name. |
+    | `TriggeredDateTimeV2` | datetime | UTC timestamp of the drop event. |
+    | `UniqueMsgID` | string | Unique message identifier. |
+    | `Guid` | string | Campaign identifier. |
+    | `MailName` | string | Campaign name. |
+
+    **Reason codes**
+
+    | Code | Meaning |
+    | --- | --- |
+    | `110` | Hard bounce filter — address previously hard-bounced. |
+    | `111` | Unsubscribe filter — contact has opted out. |
+    | `112` | Complaint filter — contact previously reported spam. |
+    | `210` | Other filter (admin or system suppression). |
+  </Accordion>
+
+  <Accordion title="Bounced — delivery failed">
+    **EventCode:** `Bounced`
+
+    Fired when an email was submitted to the receiving mail server but delivery failed. EffiLink distinguishes between permanent failures (hard bounce) and temporary failures (soft bounce).
+
+    **When it fires:** After submission to the receiving mail server, upon receiving a failure response.
+
+    | Field | Type | Description |
+    | --- | --- | --- |
+    | `EventCode` | string | `"Bounced"` |
+    | `Email` | string | Recipient email address. |
+    | `EventType` | string | Campaign type. |
+    | `Reason` | int | Bounce type code. See table below. |
+    | `SenderEmail` | string | Sending address. |
+    | `SentMailListName` | string | Target contact list name. |
+    | `SubmitDateTimeV2` | datetime | UTC timestamp when the email was submitted. |
+    | `TriggeredDateTimeV2` | datetime | UTC timestamp when the bounce was recorded. |
+    | `UniqueMsgID` | string | Unique message identifier. |
+    | `FailedCause` | string | Base64-encoded bounce diagnostic message from the receiving server. |
+    | `Guid` | string | Campaign identifier. |
+    | `MailName` | string | Campaign name. |
+
+    **Reason codes**
+
+    | Code | Meaning |
+    | --- | --- |
+    | `100` | Hard bounce — permanent delivery failure (e.g., address does not exist). The contact's `email_bounced_flag` will be set to `1`. |
+    | `101` | Soft bounce — temporary delivery failure (e.g., mailbox full, server unavailable). |
+
+    <Tip>
+      Decode `FailedCause` from Base64 to read the raw SMTP error message, which is useful for diagnosing unusual bounce patterns.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Delivered — email accepted by recipient server">
+    **EventCode:** `Delivered`
+
+    Fired when the recipient's mail server accepted the email. Note that "Delivered" means the server accepted the message — it does not guarantee the email reached the inbox (it may still be filtered to spam by the recipient's mail client).
+
+    **When it fires:** Upon receiving a successful `250 OK` (or equivalent) response from the receiving mail server.
+
+    | Field | Type | Description |
+    | --- | --- | --- |
+    | `EventCode` | string | `"Delivered"` |
+    | `Email` | string | Recipient email address. |
+    | `EventType` | string | Campaign type. |
+    | `SenderEmail` | string | Sending address. |
+    | `SentMailListName` | string | Target contact list name. |
+    | `SubmitDateTimeV2` | datetime | UTC timestamp when the email was submitted. |
+    | `TriggeredDateTimeV2` | datetime | UTC timestamp when delivery was confirmed. |
+    | `UniqueMsgID` | string | Unique message identifier. |
+    | `ReceiveServer` | string | Hostname of the recipient's mail server that accepted the message. |
+    | `Guid` | string | Campaign identifier. |
+    | `MailName` | string | Campaign name. |
+  </Accordion>
+
+  <Accordion title="Opened — recipient opened the email">
+    **EventCode:** `Opened`
+
+    Fired each time a recipient opens the email. If the same recipient opens the email multiple times, a separate `Opened` event is generated for each open. Open tracking works via a hidden 1×1 pixel image embedded in the email body.
+
+    **When it fires:** When the tracking pixel is loaded by the recipient's email client.
+
+    | Field | Type | Description |
+    | --- | --- | --- |
+    | `EventCode` | string | `"Opened"` |
+    | `Email` | string | Recipient email address. |
+    | `EventType` | string | Campaign type. |
+    | `SentMailListName` | string | Target contact list name. |
+    | `SubmitDateTimeV2` | datetime | UTC timestamp when the email was submitted. |
+    | `DeliveredTimeV2` | datetime | UTC timestamp when the email was delivered. |
+    | `TriggeredDateTimeV2` | datetime | UTC timestamp of this open event. |
+    | `UniqueMsgID` | string | Unique message identifier. |
+    | `IP` | string | IP address from which the email was opened. |
+    | `Platform` | string | Operating system or device platform (e.g., `"iOS"`, `"Windows"`). |
+    | `BrowserType` | string | Email client or browser used to open the email (e.g., `"Gmail"`, `"AppleMail"`). |
+    | `UA` | string | Full User-Agent string from the open request. |
+    | `Guid` | string | Campaign identifier. |
+    | `MailName` | string | Campaign name. |
+
+    <Note>
+      Open tracking requires images to be loaded by the recipient's email client. Some clients block image loading by default, which means opens may be under-counted. Apple Mail Privacy Protection (MPP) may also cause inflated or delayed open events.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Clicked — recipient clicked a tracked link">
+    **EventCode:** `Clicked`
+
+    Fired each time a recipient clicks a tracked link in the email. One event is generated per click, so a recipient clicking three different links produces three `Clicked` events. Click tracking must be enabled on your EffiLink account or campaign for this event to fire.
+
+    **When it fires:** When a recipient clicks a tracked link and is redirected through the EffiLink click-tracking service.
+
+    | Field | Type | Description |
+    | --- | --- | --- |
+    | `EventCode` | string | `"Clicked"` |
+    | `Email` | string | Recipient email address. |
+    | `EventType` | string | Campaign type. |
+    | `SentMailListName` | string | Target contact list name. |
+    | `SubmitDateTimeV2` | datetime | UTC timestamp when the email was submitted. |
+    | `DeliveredTimeV2` | datetime | UTC timestamp when the email was delivered. |
+    | `TriggeredDateTimeV2` | datetime | UTC timestamp of this click event. |
+    | `UniqueMsgID` | string | Unique message identifier. |
+    | `IP` | string | IP address from which the link was clicked. |
+    | `Platform` | string | Operating system or device platform. |
+    | `BrowserType` | string | Browser used to follow the link. |
+    | `UA` | string | Full User-Agent string from the click request. |
+    | `Link` | string | The destination URL that was clicked. |
+    | `Guid` | string | Campaign identifier. |
+    | `MailName` | string | Campaign name. |
+  </Accordion>
+
+  <Accordion title="Unsubscribed — recipient opted out">
+    **EventCode:** `Unsubscribed`
+
+    Fired when a recipient clicks the unsubscribe link in an email. EffiLink automatically updates the contact's `email_bounced_flag` to `2` (unsubscribe filter), preventing future sends.
+
+    **When it fires:** When the unsubscribe action is confirmed (either one-click or via a confirmation page, depending on your settings).
+
+    | Field | Type | Description |
+    | --- | --- | --- |
+    | `EventCode` | string | `"Unsubscribed"` |
+    | `Email` | string | Recipient email address. |
+    | `EventType` | string | Campaign type. |
+    | `SentMailListName` | string | Target contact list name. |
+    | `TriggeredDateTimeV2` | datetime | UTC timestamp of the unsubscribe event. |
+    | `UniqueMsgID` | string | Unique message identifier. |
+    | `Guid` | string | Campaign identifier. |
+    | `MailName` | string | Campaign name. |
+    | `Reason` | string | Unsubscribe reason provided by the recipient, if collected. |
+  </Accordion>
+
+  <Accordion title="SpamReport — recipient marked as spam">
+    **EventCode:** `SpamReport`
+
+    Fired when a recipient reports the email as spam via their email client's "Report Spam" or "Mark as Junk" button (feedback loop events). EffiLink automatically updates the contact's `email_bounced_flag` to `3` (complaint filter).
+
+    **When it fires:** When a feedback loop complaint is received from the recipient's email provider.
+
+    | Field | Type | Description |
+    | --- | --- | --- |
+    | `EventCode` | string | `"SpamReport"` |
+    | `Email` | string | Recipient email address. |
+    | `EventType` | string | Campaign type. |
+    | `SenderEmail` | string | Sending address. |
+    | `SentMailListName` | string | Target contact list name. |
+    | `TriggeredDateTimeV2` | datetime | UTC timestamp of the complaint event. |
+    | `UniqueMsgID` | string | Unique message identifier. |
+    | `Guid` | string | Campaign identifier. |
+    | `MailName` | string | Campaign name. |
+
+    <Warning>
+      A high spam complaint rate will damage your sender reputation. Monitor `SpamReport` events closely and investigate the sending practices or content associated with campaigns that generate complaints. Most email providers consider a complaint rate above 0.1% problematic.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="TaskStatus — campaign task status change">
+    **EventCode:** `TaskStatus`
+
+    Fired when the status of a campaign task changes. This event is useful for triggering downstream workflows — for example, starting a post-campaign report job when a send completes.
+
+    **When it fires:** When a campaign transitions to `Created` (task scheduled or queued) or `Completed` (all sends attempted).
+
+    | Field | Type | Description |
+    | --- | --- | --- |
+    | `EventCode` | string | `"TaskStatus"` |
+    | `StatusCode` | string | `"Created"` — task created/queued; `"Sending"` — task sending; `"Completed"` — task finished. |
+    | `TriggeredDateTimeV2` | datetime | UTC timestamp of the status change. |
+    | `MailName` | string | Campaign name. |
+    | `Guid` | string | Campaign identifier. |
+    | `Creator` | string | User or API key that created the campaign task. |
+    | `LanguageCode` | string | Language/locale code associated with the campaign. |
+    | `MarketName` | string | Market or region name for the campaign. |
+    | `SubscriptName` | string | Subscription or plan name under which the task ran. |
+    | `ProjectCode` | string | Project or sub-account code, if applicable. |
+    | `Description` | string | Human-readable status description or notes. |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Further reading
+
+- [Webhooks overview and setup](/docs/webhooks) — configure your endpoint, security best practices, and the API reference.
+- [Webhook Config API](/api/webhook-config) — programmatically get and save your webhook configuration.
+- [Contact Properties](/docs/contact-properties) — understand `email_bounced_flag` values that appear in Dropped event reason codes.

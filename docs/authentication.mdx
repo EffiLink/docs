@@ -1,0 +1,40 @@
+---
+title: "EffiLink API Authentication: API Keys and OAuth 2.0"
+sidebarTitle: "Authentication"
+description: "Learn how EffiLink's two authentication methods work — API Keys and OAuth 2.0 — and choose the right approach for your integration."
+---
+
+EffiLink supports two authentication methods: **API Keys** for direct server-to-server integrations, and **OAuth 2.0** for third-party applications that act on behalf of EffiLink users. Every API request must include one of these methods — unauthenticated requests will be rejected.
+
+## Comparison
+
+| | API Key | OAuth 2.0 |
+|---|---|---|
+| **Best for** | Server-to-server integrations | Third-party app integrations |
+| **Request header** | `ApiKey: YOUR_API_KEY` | `OAuth: ACCESS_TOKEN` |
+| **Credential scope** | Tied to your EffiLink team account | Tied to an individual user's account |
+| **Setup complexity** | Low — generate a key from the dashboard | Higher — requires an authorization flow |
+| **Token expiry** | Does not expire | Permanent by default (`expiresIn: -1`) |
+
+## When to use each method
+
+**Use API Keys when:**
+- Your application is tightly coupled with your own EffiLink account.
+- You are building a backend service or script that runs under your team's credentials.
+- You want the simplest possible setup with no user-facing login flow.
+
+**Use OAuth 2.0 when:**
+- Other people need to grant your application access to *their* EffiLink account.
+- You are building a third-party integration or marketplace app.
+- You need to act on behalf of different EffiLink users at runtime.
+
+## Detailed guides
+
+<CardGroup cols={2}>
+  <Card title="API Keys" icon="key" href="/docs/api-keys">
+    Generate an API Key from your dashboard and add it to every request with the `ApiKey` header. Best for server-to-server use.
+  </Card>
+  <Card title="OAuth 2.0" icon="lock" href="/docs/oauth2">
+    Walk through the three-step OAuth 2.0 authorization flow to obtain an access token on behalf of any EffiLink user.
+  </Card>
+</CardGroup>

@@ -1,0 +1,151 @@
+---
+title: "营销邮件统计 "
+sidebarTitle: "营销统计"
+---
+
+## 概述
+
+营销活动统计 API 返回指定日期范围内营销邮件发送任务的投递和互动指标。使用此端点监控营销活动表现、跟踪趋势并识别改进空间。
+
+`POST /v5/campaign/mail/stats/get`
+
+---
+
+## 请求参数
+
+<ParamField body="startDate" type="string" required>
+  报告期起始日期,格式为 `YYYY-MM-DD`(例如 `2025-05-01`)。包含在内。
+</ParamField>
+
+<ParamField body="endDate" type="string" required>
+  报告期结束日期，格式为 `YYYY-MM-DD`(例如 `2025-05-31`)。包含在内。
+</ParamField>
+
+<ParamField body="mailName" type="string">
+  按名称过滤特定发送任务的结果。省略以返回日期范围内所有任务的统计。
+</ParamField>
+
+<ParamField body="type" type="string">
+  按任务类型过滤。
+
+  | 值 | 描述 |
+  | --- | --- |
+  | `MailList` | 标准的基于列表的营销发送 |
+  | `ABTest` | A/B 测试营销发送 |
+
+  省略以返回所有任务类型。
+</ParamField>
+
+---
+
+## 响应
+
+<ResponseField name="code" type="int">
+  HTTP 风格的状态代码。成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  人类可读的状态消息。成功时为 `null` 或空字符串。
+</ResponseField>
+
+<ResponseField name="totalRecords" type="int">
+  符合请求过滤条件的发送任务总数。
+</ResponseField>
+
+<ResponseField name="mailStatsList" type="array[object]">
+  统计对象数组,每个匹配的发送任务对应一个。
+
+  <Expandable title="mailStatsList[] 属性">
+    <ResponseField name="mailName" type="string">
+      发送任务名称。
+    </ResponseField>
+
+    <ResponseField name="mailSendDate" type="int">
+      任务发送的时间戳,以**自 Unix 纪元以来的毫秒数**表示(例如 `1747879200000`)。
+    </ResponseField>
+
+    <ResponseField name="sentCount" type="int">
+      派发给收件人的邮件总数。
+    </ResponseField>
+
+    <ResponseField name="openCount" type="int">
+      为此次发送记录的唯一邮件打开数。
+    </ResponseField>
+
+    <ResponseField name="clickCount" type="int">
+      为此次发送记录的唯一链接点击数。
+    </ResponseField>
+
+    <ResponseField name="hardBounce" type="int">
+      永久投递失败数(例如无效或不存在的地址)。
+    </ResponseField>
+
+    <ResponseField name="softBounce" type="int">
+      临时投递失败数(例如邮箱已满、服务器不可用)。
+    </ResponseField>
+
+    <ResponseField name="unsentCount" type="int">
+      被过滤且未收到邮件的联系人数(例如重复、被抑制的地址、排除列表匹配)。
+    </ResponseField>
+
+    <ResponseField name="unsubscribeCount" type="int">
+      通过此次发送退订的收件人数。
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## 请求示例
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/stats/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "startDate": "2025-05-01",
+    "endDate": "2025-05-31"
+  }'
+```
+
+---
+
+## 响应示例
+
+```json
+{
+  "code": 200,
+  "message": null,
+  "mailStatsList": [
+    {
+      "mailName": "May Newsletter",
+      "mailSendDate": 1747879200000,
+      "sentCount": 2450,
+      "openCount": 612,
+      "clickCount": 184,
+      "hardBounce": 3,
+      "softBounce": 12,
+      "unsentCount": 8,
+      "unsubscribeCount": 5
+    }
+  ],
+  "totalRecords": 1
+}
+```
+
+---
+
+## 指标参考
+
+| 字段 | 公式 / 说明 |
+| --- | --- |
+| **打开率** | `openCount / sentCount × 100` |
+| **点击率** | `clickCount / sentCount × 100` |
+| **退信率** | `(hardBounce + softBounce) / sentCount × 100` |
+| **退订率** | `unsubscribeCount / sentCount × 100` |
+| **mailSendDate** | 毫秒级 Unix 时间戳,除以 1000 得到秒 |
+
+<Tip>
+  硬退信表示永久无法投递的地址。请考虑将硬退信收件人从您的联系人列表中移除,以保护您的发件人信誉。
+</Tip>

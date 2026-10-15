@@ -1,0 +1,159 @@
+---
+title: "发送营销邮件"
+sidebarTitle: "营销邮件"
+description: "使用 EffiLink 的营销活动 API 创建并发送批量营销邮件到分类联系人，支持计划发送。"
+---
+
+营销活动邮件是发送给一个或多个联系组的批量消息，包括新闻通讯、产品公告、促销活动、召回序列以及类似的对外沟通。与事务性邮件不同，营销发送是以受众为中心的：您通过在 EffiLink 账户中指定联系组/联系人来定义 _谁_ 会收到这条消息。
+
+`/v5/campaign/mail/sends` 端点让您可以在单次 API 调用中撰写营销活动、指定目标组、排除某人/某组、安排发送时间，也可以仅保存草稿而不发送。
+
+---
+
+## 流程概述
+
+发送营销活动前，您需要先在 EffiLink 中将联系人整理到组中。典型流程为：
+
+```text
+导入联系人 → 分配到联系人组 → 面向这些组发送营销活动
+```
+
+1. **导入联系人**：将联系人上传或同步到 EffiLink。参见[联系人](/zh/docs/contacts)了解如何创建和管理联系人组。
+2. **使用 `sendListNames` 指定组**：指定一个或多个要接收该营销活动的组名称。
+3. **撰写并发送**：提供邮件内容（或模板），设置发件人，然后调用端点。
+
+---
+
+## 发送营销活动
+
+```bash
+curl -X POST https://api.effilink.co/v5/campaign/mail/sends \
+  -H "ApiKey: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mailName": "六月月刊",
+    "senderMail": "hello@yourdomain.com",
+    "senderName": "您的品牌",
+    "subject": "六月新动态",
+    "content": "<h1>你好！</h1><p>本月的新内容如下...</p>",
+    "sendListNames": ["newsletter-subscribers"],
+    "trackOpen": 1,
+    "trackClick": 1
+  }'
+```
+
+成功响应示例：
+
+```json
+{
+  "code": 200,
+  "message": "",
+  "id": 1120,
+  "guid": "915cb709ac96418495fcf4f666f15c0d"
+}
+```
+
+### 必需参数
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `mailName` | string | 本次营销发送的唯一任务名（最长 200 字节） |
+| `senderMail` | string | 已验证的发件人邮箱 |
+| `sendListNames` | array | 一个或多个目标联系人组名称（当 `onlySave` 为 `true` 时非必需） |
+
+### 可选参数
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `senderName` | string | 发件人显示名 |
+| `subject` | string | 邮件主题 |
+| `content` | string | HTML 邮件正文 |
+| `replyTo` | string | 回信地址 |
+| `attachment` | object | `{fileName, fileData}`，单个 base64 编码文件 |
+| `languageCode` | string | 收件人语言：`zh-cn`、`en`、`ja`、`ko`、`de`、`tt`、`es`、`zh-tw`、`ar`、`pt-br`、`id` |
+| `marketName` | string | 将该发送关联到某个营销活动 |
+| `subscriptName` | string | 关联到某个订阅 |
+| `projectCode` | string | 项目编码；若不存在会自动创建 |
+| `editorType` | string | UI 编辑器类型：`CLASSIC` 或 `DRAG`（默认：`DRAG`） |
+| `sandboxMode` | boolean | 传 `true` 校验请求但不发送（参见[沙箱模式](/zh/docs/sandbox-mode)） |
+
+---
+
+## 计划发送
+
+将 `sendDate` 设置为 ISO 8601 UTC 时间戳，可将营销活动安排在未来发送。省略或留空表示立即发送。
+
+```json
+{
+  "sendDate": "2024-07-01T08:00:00Z"
+}
+```
+
+<Note>
+  A/B 测试营销活动最长可提前 **30 天** 排程。常规营销发送建议尽可能接近实际发送时间再排程。
+</Note>
+
+---
+
+## 仅保存草稿
+
+传入 `onlySave: true` 只保存营销活动配置，不实际发送任何邮件。适用于通过 API 构建草稿以便后续审查，或在 EffiLink 控制台中启动。
+
+```json
+{
+  "mailName": "七月促销活动",
+  "senderMail": "promo@yourdomain.com",
+  "subject": "七月大促——最高 5 折",
+  "content": "<p>年度最大力度促销开抢。</p>",
+  "onlySave": true
+}
+```
+
+当 `onlySave` 为 `true` 时，`sendListNames` 不是必需的。
+
+---
+
+## 使用 `repelListNames` 排除联系人
+
+使用 `repelListNames` 指定一个或多个联系人组，其成员将被 **排除** 于本次营销活动之外，即使他们也出现在目标组中。适用于抑制近期已转化的客户、已退订的用户，或任何您希望在本次发送中保护的分组。
+
+```json
+{
+  "sendListNames": ["all-subscribers"],
+  "repelListNames": ["recent-purchasers", "unsubscribed"]
+}
+```
+
+排除会在发送前于服务端应用：即使联系人同时出现在 `sendListNames` 中，但只要其在排除组中就不会收到邮件。
+
+---
+
+## A/B 测试
+
+EffiLink 支持营销邮件 A/B 测试，可在一部分受众上对比主题、内容变体或发件人名称，然后再将获胜版本发送给剩余受众。
+
+A/B 测试参数在营销活动级别配置。完整结构（包括分流比例、胜出标准和等待时间）请参见[营销发送 API 参考](/zh/api/campaign-abtest)。
+
+---
+
+## 添加附件
+
+使用 `attachment` 对象为营销邮件添加单个附件。文件内容必须是 **base64 编码** 的。
+
+```json
+{
+  "attachment": {
+    "fileName": "june-catalog.pdf",
+    "fileData": "JVBERi0xLjQKJ..."
+  }
+}
+```
+
+---
+
+## 下一步
+
+- [管理联系人](/zh/docs/contacts)：导入并对受众分组
+- [营销发送 API 参考](/zh/api/campaign-sends)：完整参数结构、A/B 测试选项与响应细节
+- [沙箱模式](/zh/docs/sandbox-mode)：不实际发送邮件的情况下校验营销请求
+- [邮件跟踪](/zh/docs/email-tracking)：跟踪营销活动的打开与点击

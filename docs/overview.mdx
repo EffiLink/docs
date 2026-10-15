@@ -1,0 +1,88 @@
+---
+title: "EffiLink REST API: Cloud Messaging for Email and SMS"
+sidebarTitle: "Overview"
+description: "EffiLink is a cloud messaging REST API for sending transactional email, marketing campaigns, and SMS with real-time delivery tracking and webhooks."
+---
+
+EffiLink gives you a single REST API to send transactional emails, run marketing campaigns, deliver SMS messages, and receive real-time engagement events via webhooks. All of this runs on EffiLink's infrastructure at `api.effilink.co`, so you focus on your product, not on deliverability.
+
+## What you can do with EffiLink
+
+<CardGroup cols={2}>
+  <Card title="Transactional Email" icon="envelope" href="/docs/transactional-email">
+    Send triggered emails like order confirmations, password resets, and shipping notifications.
+  </Card>
+
+  <Card title="Marketing Campaigns" icon="bullhorn" href="/docs/campaign-email">
+    Create and deliver newsletters, promotions, and announcements to contact lists.
+  </Card>
+
+  <Card title="SMS" icon="mobile" href="/docs/sms-send">
+    Send individual or bulk SMS messages for notifications and promotions.
+  </Card>
+
+  <Card title="Webhooks" icon="webhook" href="/docs/webhooks">
+    Receive real-time events for every delivery, open, click, bounce, and unsubscribe.
+  </Card>
+</CardGroup>
+
+## API fundamentals
+
+EffiLink provides geographically distributed API endpoints to ensure high availability and optimal access performance. Please use the endpoint closest to your application's deployment region: 
+
+- Mainland China:  
+  ```text
+  https://api.effilink.co
+  ```
+- Hong Kong China: 
+  ```text
+  https://hk-api.effilink.co
+  ```
+- Europe:
+  ```text
+  https://eu-api.effilink.co 
+  ```
+
+For the best latency and reliability, we recommend selecting the endpoint that is geographically closest to your users or application servers.  
+
+Every request must:
+
+- Be sent over **HTTPS**
+- Use `Content-Type: application/json`
+- Include an authentication header (`ApiKey` or `OAuth`)
+
+<Note>
+  Parameter names are **case-sensitive**. All request and response data uses UTF-8 encoding.
+</Note>
+
+## HTTP response codes
+
+| Code | Status | Meaning |
+| --- | --- | --- |
+| 200 | OK | Request succeeded |
+| 400 | Bad Request | Invalid data format or missing required parameter |
+| 404 | Not Found | Endpoint does not exist |
+| 405 | Method Not Allowed | Use GET or POST as specified |
+| 429 | Too Many Requests | Rate limit exceeded |
+|  |  |  |
+
+## Pagination
+
+List and search endpoints return paginated results. Use these query parameters to navigate pages:
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `pageSize` | integer | Number of records per page |
+| `pageIndex` | integer | Page number, starting from `1` |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/docs/quickstart">
+    Send your first email in under 5 minutes.
+  </Card>
+
+  <Card title="Authentication" icon="key" href="/docs/authentication">
+    Learn how to authenticate API requests.
+  </Card>
+</CardGroup>

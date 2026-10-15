@@ -1,0 +1,154 @@
+---
+title: "发送短信消息 "
+sidebarTitle: "发送短信"
+---
+
+## 概述
+
+短信发送 API 让您在一次请求中向一个或最多100收件人发送事务性或营销短信。您可以为所有收件人使用全局消息和个性化标签，或按收件人指定内容以实现完全定制的批量发送。
+
+`POST /v5/sms/sends`
+
+<Note>
+  短信内容必须匹配已在相关运营商或监管机构注册的预审模板。不符合已审核模板的消息可能会被拒绝。每次请求最多 **100 位收件人**。
+</Note>
+
+---
+
+## 内容优先级
+
+当提供多个内容来源时,EffiLink 按以下优先级顺序(从高到低)解析每个收件人的最终消息:
+
+| 优先级 | 来源 |
+| --- | --- |
+| 1(最高) | `toList[].templateName` — 每个收件人模板 |
+| 2 | `toList[].content` — 每个收件人内联内容 |
+| 3 | `templateName` — 全局模板 |
+| 4(最低) | `content` — 全局内联内容 |
+
+---
+
+## 请求参数
+
+### 全局参数
+
+<ParamField body="content" type="string">
+  短信正文,包括您的品牌签名,适用于所有收件人。支持个性化标签(例如 `{{code}}`、`{{name}}`)。除非提供 `templateName`,否则必填。
+
+  示例:`[YourBrand] Your verification code is {{code}}. Valid for 5 minutes.`
+</ParamField>
+
+<ParamField body="templateName" type="string">
+  已全局注册的短信模板名称,作为所有收件人的消息正文。当同时提供时,优先于全局 `content` 字段。
+</ParamField>
+
+<ParamField body="params" type="object">
+  应用于所有收件人的个性化标签值键值映射。当同时存在时,被每个收件人的 `params` 覆盖。
+
+  ```json
+  { "code": "123456" }
+  ```
+</ParamField>
+
+<ParamField body="toList" type="array[object]" required>
+  收件人对象数组。每次请求最多 100 项。
+
+  <Expandable title="toList[] 属性">
+    <ParamField body="mobile" type="string" required>
+      收件人电话号码。国际号码请包含国家代码(例如日本为 `+818000012345`,中国为 `18800006666`)。
+    </ParamField>
+
+    <ParamField body="content" type="string">
+      每个收件人的短信正文。为此收件人覆盖全局 `content` 字段。优先级低于 `toList[].templateName`。
+    </ParamField>
+
+    <ParamField body="templateName" type="string">
+      每个收件人的模板名称。对该收件人,此项优先级高于所有其他内容来源。
+    </ParamField>
+
+    <ParamField body="params" type="object">
+      每个收件人的个性化标签值。为此收件人覆盖全局 `params`。
+
+      ```json
+      { "name": "Alice", "orderId": "ORD-001" }
+      ```
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  设置为 `true` 以沙箱模式运行。请求会被处理和验证,但不会实际投递任何短信。
+</ParamField>
+
+---
+
+## 响应
+
+<ResponseField name="code" type="int">
+  HTTP 风格的状态代码。成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  人类可读的状态消息。成功时为空字符串。
+</ResponseField>
+
+---
+
+## 示例:简单批量发送
+
+使用全局模板和共享的个性化值向多位收件人发送相同消息。
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/sms/sends \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "content": "[YourBrand] Your verification code is {{code}}. Valid for 5 minutes.",
+    "params": {"code": "123456"},
+    "toList": [
+      {"mobile": "18800006666"},
+      {"mobile": "18800008888"}
+    ]
+  }'
+```
+
+两位收件人都将收到:
+
+> `[YourBrand] Your verification code is 123456. Valid for 5 minutes.`
+
+---
+
+## 示例:个性化批量发送
+
+通过为每个收件人提供 `params`,向每位收件人发送独特消息。
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/sms/sends \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "content": "[YourBrand] Hi {{name}}, your order {{orderId}} has shipped.",
+    "toList": [
+      {"mobile": "18800006666", "params": {"name": "Alice", "orderId": "ORD-001"}},
+      {"mobile": "18800008888", "params": {"name": "Bob", "orderId": "ORD-002"}}
+    ]
+  }'
+```
+
+每位收件人收到个性化消息:
+
+- `18800006666`:`[YourBrand] Hi Alice, your order ORD-001 has shipped.`
+- `18800008888`:`[YourBrand] Hi Bob, your order ORD-002 has shipped.`
+
+---
+
+## 响应示例
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```

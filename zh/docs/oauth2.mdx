@@ -1,0 +1,115 @@
+---
+title: "OAuth 2.0"
+sidebarTitle: "OAuth 2.0"
+description: "使用 EffiLink 的 OAuth 2.0 流程获取访问令牌，让您的第三方应用代表任意 EffiLink 用户发起 API 请求。"
+---
+
+OAuth 2.0 让您的应用可以代表任意 EffiLink 用户执行操作，而无需接触其密码。您的应用引导用户完成授权流程，接收一次性的授权码，并将其兑换为永久访问令牌。该令牌随后附加在您代表该用户发起的每个 API 请求中。
+
+## 前置条件
+
+在启动 OAuth 流程之前，您必须在 EffiLink 平台注册一个 OAuth 应用。注册后会获得整个流程所需的三项凭据：
+
+| 凭据 | 说明 |
+| --- | --- |
+| `client_id` | 已注册 OAuth 应用的唯一标识。 |
+| `client_secret` | 用授权码兑换令牌时用于证明应用身份的密钥。请妥善保密。 |
+| `redirect_uri` | 用户同意（或拒绝）授权后 EffiLink 会将其重定向到的 URL。必须与应用设置中注册的值完全一致。 |
+
+## 授权流程
+
+<Steps>
+  <Step title="构造授权 URL">
+    将用户引导至 EffiLink 的授权端点。用户将看到由 EffiLink 托管的页面，询问其是否同意授权您的应用。
+
+    ```text
+    GET https://api.effilink.co/v5/auth/oauth/authorize
+    ```
+
+    | 参数 | 值 | 说明 |
+    | --- | --- | --- |
+    | `client_id` | 应用的 client ID | 标识您的 OAuth 应用。 |
+    | `response_type` | `code` | 指示 EffiLink 返回授权码。 |
+    | `redirect_uri` | 经 URL 编码的回调地址 | 必须与应用设置中注册的 URI 一致。 |
+    | `scope` | `All` | 授予代表该用户访问全部 API 的权限。 |
+
+    **示例请求：**
+
+    ```bash
+    curl --request GET \
+      --url 'https://api.effilink.co/v5/auth/oauth/authorize?client_id=1751651162214168&response_type=code&redirect_uri=https%3A%2F%2Fapp.effilink.co%2FoauthCodeCallback&scope=All'
+    ```
+
+    用户同意后，EffiLink 会将其重定向至您的 `redirect_uri`，并在查询参数中附带授权码：
+
+    ```text
+    https://your-redirect-uri.com/callback?code=AUTHORIZATION_CODE
+    ```
+
+    <Warning>
+      授权码 **5 分钟后过期**。请在收到后立即用其兑换访问令牌。
+    </Warning>
+  </Step>
+  <Step title="使用授权码兑换访问令牌">
+    使用授权码调用令牌端点，获取访问令牌。
+
+    ```text
+    GET https://api.effilink.co/v5/auth/oauth/token
+    ```
+
+    | 参数 | 值 | 说明 |
+    | --- | --- | --- |
+    | `grant_type` | `authorization_code` | 指定所使用的 OAuth 授权类型。 |
+    | `client_id` | 应用的 client ID | 标识您的 OAuth 应用。 |
+    | `client_secret` | 应用的 client secret | 用于服务端验证应用身份。 |
+    | `code` | 步骤 1 获得的授权码 | 在重定向 URI 中收到的授权码。 |
+
+    **示例请求：**
+
+    ```bash
+    curl --request GET \
+      --url 'https://api.effilink.co/v5/auth/oauth/token?grant_type=authorization_code&client_id=1751651162214168&client_secret=768e04e13b5f4a3ca67de0a21b3ca7d5&code=ae3cae67d13b5fe0a21b3cae7d'
+    ```
+
+    **示例响应：**
+
+    ```json
+    {
+      "code": 200,
+      "message": null,
+      "accessToken": "5cb089d6eafd49caa68c41b9be9af6f6",
+      "expiresIn": -1
+    }
+    ```
+
+    **响应字段：**
+
+    | 字段 | 类型 | 说明 |
+    | --- | --- | --- |
+    | `code` | integer | 响应的 HTTP 状态码。`200` 表示成功。 |
+    | `message` | string | 请求失败时的错误信息；成功时为 `null`。 |
+    | `accessToken` | string | 用于后续 API 请求的访问令牌。 |
+    | `expiresIn` | integer | 令牌剩余有效秒数。`-1` 表示令牌永久有效，不会过期。 |
+  </Step>
+  <Step title="在 API 请求中使用访问令牌">
+    在每个 API 请求中添加 `OAuth` 请求头，值为步骤 2 中获得的访问令牌。
+
+    ```bash
+    curl --request POST \
+      --url https://api.effilink.co/v5/transactional/mail/sends_customised \
+      --header 'Content-Type: application/json' \
+      --header 'OAuth: 5cb089d6eafd49caa68c41b9be9af6f6' \
+      --data '{"subject":"Hello"}'
+    ```
+
+    每个需要用户级授权的请求都必须携带 `OAuth` 请求头。缺失或无效令牌的请求将收到 `401 Unauthorized` 响应。
+  </Step>
+</Steps>
+
+## 令牌过期与续期
+
+默认情况下，EffiLink 访问令牌是 **永久有效** 的（`expiresIn: -1`）。当令牌接近过期（剩余时间少于 5 分钟）时，可通过重新运行授权流程生成新令牌。在短暂的重叠期内，**旧令牌与新令牌同时有效**，让您可以无中断地轮换令牌。
+
+<Tip>
+  请妥善保管访问令牌，将其视为与密码同等敏感的信息。切勿在客户端代码、URL 或日志中暴露它。请通过服务端的密钥管理服务或环境变量在运行时管理令牌。
+</Tip>

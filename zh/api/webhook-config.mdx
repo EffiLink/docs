@@ -1,0 +1,258 @@
+---
+title: "Webhook 配置 API"
+sidebarTitle: "Webhook 配置"
+---
+
+## 概述
+
+获取并更新你的 EffiLink Webhook 配置。控制已启用事件、回调 URL、按发件人路由以及全局启用/禁用状态。
+
+---
+
+## 获取 Webhook 配置
+
+`POST /v5/webhook/get`
+
+返回您账户当前的 Webhook 配置,包括已启用的事件类型、回调 URL 和启用状态。不需要请求体参数。
+
+### 请求体
+
+此端点不接受任何参数。请传入空 JSON 对象(`{}`)作为请求体。
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串;失败时为错误描述。
+</ResponseField>
+
+<ResponseField name="transEvent" type="object">
+  指示当前启用哪些事件类型进行 Webhook 投递的对象。如果尚未保存任何配置,则返回 `null`。每个键对应一种事件类型;`true` 表示该事件的通知已启用。
+
+  <Expandable title="transEvent 对象">
+    <ResponseField name="dropped" type="boolean">
+      当为丢弃消息启用 Webhook 通知时为 `true`。
+    </ResponseField>
+
+    <ResponseField name="bounced" type="boolean">
+      当为退信消息启用 Webhook 通知时为 `true`。
+    </ResponseField>
+
+    <ResponseField name="delivered" type="boolean">
+      当为已投递消息启用 Webhook 通知时为 `true`。
+    </ResponseField>
+
+    <ResponseField name="spamReport" type="boolean">
+      当为垃圾邮件报告启用 Webhook 通知时为 `true`。
+    </ResponseField>
+
+    <ResponseField name="opened" type="boolean">
+      当为打开事件启用 Webhook 通知时为 `true`。
+    </ResponseField>
+
+    <ResponseField name="clicked" type="boolean">
+      当为链接点击事件启用 Webhook 通知时为 `true`。
+    </ResponseField>
+
+    <ResponseField name="unsubscribed" type="boolean">
+      当为退订事件启用 Webhook 通知时为 `true`。
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="transCallbackUrl" type="string">
+  接收所有没有特定覆盖的发件人 Webhook 载荷的默认回调 URL。若未配置则返回 `null`。
+</ResponseField>
+
+<ResponseField name="transCallbackUrlExtra" type="array[object]">
+  按发件人的回调 URL 覆盖。每个对象将来自特定发件人的事件路由到专用端点。若未配置则返回 `null`。
+
+  <Expandable title="transCallbackUrlExtra 对象">
+    <ResponseField name="sender" type="string">
+      此覆盖适用的发件人邮箱地址。
+    </ResponseField>
+
+    <ResponseField name="url" type="string">
+      接收此发件人事件的回调 URL。
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="transEnable" type="boolean">
+  当 Webhook 投递全局启用时为 `true`;当所有 Webhook 都已暂停时为 `false`。若未配置则返回 `null`。
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/webhook/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{}'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": "",
+  "transEvent": {
+    "dropped": true,
+    "bounced": true,
+    "delivered": true,
+    "spamReport": false,
+    "opened": true,
+    "clicked": true,
+    "unsubscribed": false
+  },
+  "transCallbackUrl": "https://yourapp.com/webhooks/effilink",
+  "transCallbackUrlExtra": [
+    {
+      "sender": "newsletter@yourdomain.com",
+      "url": "https://yourapp.com/webhooks/newsletter"
+    }
+  ],
+  "transEnable": true
+}
+```
+
+---
+
+## 保存 Webhook 配置
+
+`POST /v5/webhook/save`
+
+更新一个或多个 Webhook 配置设置。所有字段均为可选,仅修改您包含的字段。
+
+### 请求体
+
+<ParamField body="transEvent" type="object">
+  控制哪些事件类型触发 Webhook 通知的对象。仅包含您想要更改的键;省略的键保留当前值。将键设为 `true` 以启用该事件的通知,或设为 `false` 以禁用。
+
+  <Expandable title="transEvent 对象">
+    <ParamField body="dropped" type="boolean">
+      为丢弃消息启用(`true`)或禁用(`false`)Webhook 通知。
+    </ParamField>
+
+    <ParamField body="bounced" type="boolean">
+      为退信消息启用(`true`)或禁用(`false`)Webhook 通知。
+    </ParamField>
+
+    <ParamField body="delivered" type="boolean">
+      为已投递消息启用(`true`)或禁用(`false`)Webhook 通知。
+    </ParamField>
+
+    <ParamField body="spamReport" type="boolean">
+      为垃圾邮件报告启用(`true`)或禁用(`false`)Webhook 通知。
+    </ParamField>
+
+    <ParamField body="opened" type="boolean">
+      为打开事件启用(`true`)或禁用(`false`)Webhook 通知。
+    </ParamField>
+
+    <ParamField body="clicked" type="boolean">
+      为链接点击事件启用(`true`)或禁用(`false`)Webhook 通知。
+    </ParamField>
+
+    <ParamField body="unsubscribed" type="boolean">
+      为退订事件启用(`true`)或禁用(`false`)Webhook 通知。
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="transCallbackUrl" type="string">
+  接收 Webhook 载荷的默认回调 URL。用于没有按发件人覆盖的所有发件人。必须是 `http://` 或 `https://` URL。
+</ParamField>
+
+<ParamField body="transCallbackUrlExtra" type="array[object]">
+  按发件人的回调 URL 覆盖。行为由 `transCallbackUrlExtraUpdateMode` 控制。要移除某个发件人的现有覆盖,请为 `url` 传入空字符串 `""`。
+
+  <Expandable title="transCallbackUrlExtra 对象">
+    <ParamField body="sender" type="string" required>
+      此覆盖适用的发件人邮箱地址。
+    </ParamField>
+
+    <ParamField body="url" type="string">
+      应接收此发件人事件的回调 URL。必须是 `http://` 或 `https://` URL。传入空字符串以移除此发件人的现有覆盖。
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="transCallbackUrlExtraUpdateMode" type="string">
+  确定 `transCallbackUrlExtra` 条目的应用方式:
+
+  - `"save"` — 添加新条目并更新现有条目;保留所有其他条目。这是默认值。
+  - `"replace"` — 用提供的条目替换整个按发件人覆盖列表。
+</ParamField>
+
+<ParamField body="transEnable" type="boolean">
+  设置为 `true` 以全局启用 Webhook 投递,或设置为 `false` 以暂停所有 Webhook 通知。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串;失败时为错误描述。
+</ResponseField>
+
+<CodeGroup>
+
+```bash 启用 Webhook 并配置事件
+curl --request POST \
+  --url https://api.effilink.co/v5/webhook/save \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "transEvent": {
+      "dropped": false,
+      "bounced": true,
+      "delivered": true,
+      "spamReport": false,
+      "opened": true,
+      "clicked": true,
+      "unsubscribed": false
+    },
+    "transCallbackUrl": "https://yourapp.com/webhooks/effilink",
+    "transEnable": true
+  }'
+```
+
+```bash 添加按发件人的 URL 覆盖
+curl --request POST \
+  --url https://api.effilink.co/v5/webhook/save \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "transCallbackUrlExtra": [
+      {
+        "sender": "alerts@yourdomain.com",
+        "url": "https://yourapp.com/webhooks/alerts"
+      }
+    ],
+    "transCallbackUrlExtraUpdateMode": "save"
+  }'
+```
+
+```bash 禁用所有 Webhook 投递
+curl --request POST \
+  --url https://api.effilink.co/v5/webhook/save \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "transEnable": false
+  }'
+```
+
+</CodeGroup>
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```

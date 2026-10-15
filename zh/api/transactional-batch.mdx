@@ -1,0 +1,206 @@
+---
+title: "批量事务性邮件发送 "
+sidebarTitle: "批量发送"
+---
+
+## 概述
+
+使用 `messageVersions` 数组，在一次 API 调用中发送最多 **100 个个性化邮件版本**。每个版本最多可指向 20 个收件人，并可独立覆盖顶层的主题、内容、模板和个性化参数。这是分发一批个性化事务性消息最高效的方式，无需为每个收件人发起单独请求。
+
+此接口与[单封事务性邮件发送](/zh/api/transactional-send)使用相同的端点，仅新增了 `messageVersions` 字段。
+
+`POST /v5/transactional/mail/sends_customised`
+
+---
+
+## 内容优先级顺序
+
+当提供多个内容来源时，应用以下优先级(从高到低):
+
+1. `messageVersions[].templateName`
+2. `messageVersions[].content`
+3. 顶层 `templateName`
+4. 顶层 `content`
+
+---
+
+## 请求参数
+
+所有[单封发送参数](/zh/api/transactional-send#request-parameters)都支持在顶层设置，并作为所有版本的默认值。批量发送必须提供 `messageVersions` 数组。
+
+<ParamField body="subject" type="string">
+  默认邮件主题，用于未定义自己 `subject` 的版本。
+</ParamField>
+
+<ParamField body="content" type="string">
+  默认 HTML 邮件正文内容。用于未指定 `content` 或 `templateName` 的版本。如果未设置顶层 `templateName` 且没有版本提供自己的内容来源，则此字段为必填。
+</ParamField>
+
+<ParamField body="templateName" type="string">
+  默认已保存模板名称。用于未指定自己 `templateName` 或 `content` 的版本。
+</ParamField>
+
+<ParamField body="params" type="object">
+  应用于所有版本的默认键值对个性化标签。当同名键存在时，版本级 `params` 会覆盖这些值。
+
+  ```json
+  { "brand": "Your Store", "supportEmail": "help@yourdomain.com" }
+  ```
+</ParamField>
+
+<ParamField body="senderMail" type="string" required>
+  已验证的发件人邮箱地址。适用于所有版本。
+</ParamField>
+
+<ParamField body="senderName" type="string">
+  发件人显示名称。最大 **200 字符**。适用于所有版本。
+</ParamField>
+
+<ParamField body="replyTo" type="string">
+  回复邮箱地址。适用于所有版本。
+</ParamField>
+
+<ParamField body="sendDate" type="string">
+  定时发送时间，采用 ISO 8601 UTC 格式(例如 `2024-03-10T12:00:00Z`)。省略则立即发送。
+</ParamField>
+
+<ParamField body="trackOpen" type="integer">
+  设置为 `1` 以在所有版本上启用打开跟踪。
+</ParamField>
+
+<ParamField body="trackClick" type="integer">
+  设置为 `1` 以在所有版本上启用点击跟踪。
+</ParamField>
+
+<ParamField body="category" type="string">
+  邮件分类标签。最大 **100 字节**，仅限字母数字字符。
+</ParamField>
+
+<ParamField body="campaign" type="string">
+  用于分析分组的营销活动名称。最大 **100 字节**，仅限字母数字字符。
+</ParamField>
+
+<ParamField body="uniqueMsgID" type="string">
+  用于跟踪和去重的唯一消息标识符。最大 **50 字节**。
+</ParamField>
+
+<ParamField body="attachment" type="object">
+  附加到批次中所有邮件的单个文件。每次请求仅支持一个附件。
+
+  <Expandable title="attachment 字段">
+    <ParamField body="fileName" type="string" required>
+      附件文件名,包含扩展名(例如 `invoice.pdf`)。
+    </ParamField>
+
+    <ParamField body="fileData" type="string" required>
+      要附加文件的 Base64 编码内容。
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  设置为 `true` 以验证和处理请求，但不实际投递任何邮件。
+</ParamField>
+
+<ParamField body="messageVersions" type="array[object]" required>
+  最多 **100** 个独立邮件版本的数组。每个版本继承顶层值，并可选择性地覆盖。
+
+  <Expandable title="messageVersions[] 字段">
+    <ParamField body="to" type="array[object]" required>
+      此版本的主要收件人列表。最多 **20** 个收件人。
+
+      每项:`{ "email": "string (必填)", "name": "string (选填)" }`
+    </ParamField>
+
+    <ParamField body="cc" type="array[object]">
+      此版本的抄送收件人列表。最多 **20** 个收件人。
+
+      每项:`{ "email": "string (必填)", "name": "string (选填)" }`
+    </ParamField>
+
+    <ParamField body="bcc" type="array[object]">
+      此版本的密送收件人列表。最多 **20** 个收件人。
+
+      每项:`{ "email": "string (必填)", "name": "string (选填)" }`
+    </ParamField>
+
+    <ParamField body="subject" type="string">
+      版本级主题。仅覆盖此版本的顶层 `subject`。
+    </ParamField>
+
+    <ParamField body="content" type="string">
+      版本级 HTML 邮件正文。覆盖此版本的顶层 `content`(除非同时设置了版本级 `templateName`)。
+    </ParamField>
+
+    <ParamField body="templateName" type="string">
+      版本级模板名称。优先级最高,覆盖版本级 `content` 和所有顶层内容来源。
+    </ParamField>
+
+    <ParamField body="params" type="object">
+      版本级个性化标签。仅对此版本覆盖顶层 `params` 中匹配的键。
+
+      ```json
+      { "name": "Alice", "orderId": "ORD-001", "status": "Shipped" }
+      ```
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+---
+
+## 响应字段
+
+<ResponseField name="code" type="integer">
+  成功时为 `200`。失败值请参见[错误代码表](#error-codes)。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串(`""`)。失败时包含错误描述。
+</ResponseField>
+
+---
+
+## 错误代码
+
+| 代码 | 原因 |
+| --- | --- |
+| `400` | 缺少必填参数;`messageVersions` 超过 100 项;某个版本的 `to`、`cc` 或 `bcc` 数组超过 20 个收件人;`sendDate` 格式无效;`category`、`campaign` 或 `uniqueMsgID` 过长;收件人地址无效;发件人名称过长;回复地址无效;缺少内容 |
+| `403` | 发件人地址未注册;模板未找到;账户余额不足 |
+
+---
+
+## 示例
+
+### 请求
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/transactional/mail/sends_customised \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "subject": "订单 {{orderId}} 更新",
+    "content": "<p>您好 {{name}},</p><p>您的订单 {{orderId}} 状态:{{status}}</p>",
+    "senderMail": "noreply@yourdomain.com",
+    "trackOpen": 1,
+    "messageVersions": [
+      {
+        "to": [{"email": "alice@example.com", "name": "Alice"}],
+        "params": {"name": "Alice", "orderId": "ORD-001", "status": "Shipped"}
+      },
+      {
+        "to": [{"email": "bob@example.com", "name": "Bob"}],
+        "params": {"name": "Bob", "orderId": "ORD-002", "status": "Processing"}
+      }
+    ]
+  }'
+```
+
+### 响应
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```

@@ -1,0 +1,43 @@
+---
+title: "认证"
+sidebarTitle: "认证"
+description: "了解 EffiLink 的两种认证方式（API 密钥和 OAuth 2.0），并为您的集成选择合适的方案。"
+---
+
+EffiLink 支持两种认证方式：**API 密钥**适用于直接的服务端到服务端集成；**OAuth 2.0** 适用于代表 EffiLink 用户操作的第三方应用。每个 API 请求都必须包含其中一种认证方式，未认证的请求将被拒绝。
+
+## 对比
+
+|  | API 密钥 | OAuth 2.0 |
+| --- | --- | --- |
+| **最适合** | 服务端到服务端集成 | 第三方应用集成 |
+| **请求头** | `ApiKey: YOUR_API_KEY` | `OAuth: ACCESS_TOKEN` |
+| **凭据范围** | 绑定到您的 EffiLink 团队账户 | 绑定到具体用户的账户 |
+| **配置复杂度** | 低，可在控制台直接生成 | 较高，需要授权流程 |
+| **令牌有效期** | 永不过期 | 默认永久有效（`expiresIn: -1`） |
+
+## 何时使用哪种方式
+
+**在以下情况使用 API 密钥：**
+
+- 您的应用与自己的 EffiLink 账户紧密耦合。
+- 您正在构建以团队凭据运行的后端服务或脚本。
+- 您希望使用最简单的配置，无需面向用户的登录流程。
+
+**在以下情况使用 OAuth 2.0：**
+
+- 其他用户需要授权您的应用访问 _他们_ 的 EffiLink 账户。
+- 您正在构建第三方集成或应用市场产品。
+- 您需要在运行时代表不同的 EffiLink 用户执行操作。
+
+## 详细指南
+
+<CardGroup cols={2}>
+  <Card title="API 密钥" icon="key" href="/zh/docs/api-keys">
+    从控制台生成 API 密钥，并通过 `ApiKey` 请求头附加到每个请求。最适合服务端到服务端场景。
+  </Card>
+
+  <Card title="OAuth 2.0" icon="lock" href="/zh/docs/oauth2">
+    按照三步 OAuth 2.0 授权流程，代表任何 EffiLink 用户获取访问令牌。
+  </Card>
+</CardGroup>

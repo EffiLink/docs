@@ -1,0 +1,206 @@
+---
+title: "EffiLink Contacts API: Create, Import, and Manage Contacts"
+sidebarTitle: "Contacts"
+description: "Create, update, import, retrieve, and delete contacts in EffiLink using the REST API. Sync CRM data and grow your contact lists programmatically."
+---
+
+The Contacts API gives you full control over your EffiLink contact database. You can add or update individual contacts, bulk-import thousands of records from a data array, retrieve contact details and filter status, and remove contacts you no longer need — all without leaving your own codebase.
+
+---
+
+## Add or update a single contact
+
+`POST /v5/contacts/upsert`
+
+Use this endpoint to create a new contact or update an existing one in a single call. EffiLink matches on **email** or **phoneNumber** — if a contact with that identifier already exists, its record is updated; otherwise a new contact is created.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | No | Display name. Defaults to the email address if omitted. |
+| `email` | string | Conditional | Required when `phoneNumber` is not provided. |
+| `phoneNumber` | string | Conditional | Required when `email` is not provided. |
+| `listName` | string | No | Add the contact to this list. The list must already exist. |
+| `sandboxMode` | boolean | No | When `true`, the operation is simulated and no data is written. |
+
+**Example request**
+
+```json
+{
+  "name": "Jane Smith",
+  "email": "jane@example.com",
+  "phoneNumber": "+14155550100",
+  "listName": "Newsletter Subscribers"
+}
+```
+
+**Example response**
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+---
+
+## Bulk import contacts
+
+`POST /v5/contacts/imports`
+
+When you need to load many contacts at once — for example, migrating from a CRM export or syncing a nightly data pipeline — bulk import is the right tool. You pass a two-dimensional array of raw data rows alongside a mapping that tells EffiLink which column corresponds to which contact property.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `contactData` | array\[array\] | Yes | 2-D array of contact data rows. Each inner array is one contact. |
+| `contactDataMapping` | array\[object\] | Yes | Maps each column index to a contact property identifier (see [Contact Properties](/docs/contact-properties)). |
+| `updateMode` | int | Yes | `1` = create and update, `2` = create only, `3` = update only. |
+| `listName` | string | No | Group to import contacts into. Created automatically if it does not exist. |
+| `listDescription` | string | No | Description for the group, applied only when a new group is created. |
+| `sandboxMode` | boolean | No | When `true`, validates the payload without writing data. |
+
+**`contactDataMapping` object fields**
+
+| Field | Type | Description |
+|---|---|---|
+| `columnNum` | int | Zero-based index of the column in each `contactData` row. |
+| `propertyName` | string | Property identifier, e.g. `"email"`, `"name"`, `"phoneNumber"`. |
+
+**Example request**
+
+```json
+{
+  "contactData": [
+    ["jane@example.com", "Jane Smith"],
+    ["bob@example.com", "Bob Jones"]
+  ],
+  "contactDataMapping": [
+    { "columnNum": 0, "propertyName": "email" },
+    { "columnNum": 1, "propertyName": "name" }
+  ],
+  "updateMode": 1,
+  "listName": "Newsletter Subscribers"
+}
+```
+
+<Tip>
+Use `updateMode: 2` (create only) when seeding a fresh list to avoid accidentally overwriting properties on existing contacts. Switch to `updateMode: 1` for ongoing sync jobs where updates are expected.
+</Tip>
+
+---
+
+## Retrieve a contact
+
+`POST /v5/contacts/get`
+
+Fetch a single contact record by email address. The response includes all standard fields and any system-tracked engagement properties such as bounce status and open counts.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `email` | string | Yes | Email address of the contact to retrieve. |
+
+**Example request**
+
+```json
+{
+  "email": "jane@example.com"
+}
+```
+
+**Response fields**
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique contact identifier. |
+| `name` | string | Contact display name. |
+| `email` | string | Email address. |
+| `phoneNumber` | string | Phone number. |
+| `properties` | object | System and custom property values (see [Contact Properties](/docs/contact-properties)). |
+| `createDate` | datetime | Timestamp when the contact was created. |
+| `modifyTime` | datetime | Timestamp of the last update. |
+| `createUserId` | int | ID of the user or API key that created the contact. |
+
+**Example response**
+
+```json
+{
+  "code": 200,
+  "message": "",
+  "contact": {
+    "id": "653f663a17e04f6e5a263de6",
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "phoneNumber": "+14155550100",
+    "properties": {
+      "properties.company": "Acme Corp",
+      "properties.email_bounced_flag": "0",
+      "properties.email_open_count": 4
+    },
+    "createDate": "2024-01-15T10:22:00Z",
+    "modifyTime": "2024-06-01T08:05:00Z",
+    "createUserId": 42
+  }
+}
+```
+
+The `properties.email_bounced_flag` field indicates the contact's current email filter status. A value of `0` means the address is in good standing; other values indicate suppression reasons. See [Contact Properties](/docs/contact-properties) for the full flag reference.
+
+---
+
+## List contacts in a group
+
+`POST /v5/contacts/list/get`
+
+Retrieve a paginated list of all contacts belonging to a specific contact list.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `listName` | string | Yes | Name of the contact list to query. |
+| `pageSize` | int | No | Number of contacts per page. Default `200`, maximum `1000`. |
+| `pageIndex` | int | No | Page number, starting at `1`. Default `1`. |
+| `teamName` | string | No | Query a list owned by another team. Requires cross-team permission. |
+
+**Example request**
+
+```json
+{
+  "listName": "Newsletter Subscribers",
+  "pageSize": 500,
+  "pageIndex": 1
+}
+```
+
+Iterate `pageIndex` until the returned array contains fewer items than `pageSize` to paginate through all contacts in a large list.
+
+---
+
+## Delete a contact
+
+`POST /v5/contacts/delete`
+
+Permanently removes a contact record from your EffiLink account. This action cannot be undone.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `email` | string | Yes | Email address of the contact to delete. |
+| `sandboxMode` | boolean | No | When `true`, simulates the deletion without removing data. |
+
+**Example request**
+
+```json
+{
+  "email": "jane@example.com"
+}
+```
+
+---
+
+## Common use cases
+
+### Syncing CRM data
+
+If your CRM exports a nightly CSV, parse it into a `contactData` array and call `POST /v5/contacts/imports` with `updateMode: 1`. Map every column you care about using `contactDataMapping` and point the import at a dedicated `listName` for that CRM segment. Contacts that already exist are updated in place; new email addresses are created automatically.
+
+### Growing subscriber lists
+
+When a user signs up through your website or app, call `POST /v5/contacts/upsert` immediately with their email, name, and the `listName` of your welcome series. Because upsert is idempotent, it is safe to call on every sign-up event without worrying about duplicates — existing contacts are simply updated with the latest data.

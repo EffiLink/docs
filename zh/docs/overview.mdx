@@ -1,0 +1,84 @@
+---
+title: "EffiLink REST API：邮件和短信云消息服务"
+sidebarTitle: "概览"
+description: "EffiLink 是一个云消息 REST API，用于发送触发事务类邮件、营销类邮件和短信下发，并提供实时投递状态追踪与 Webhook 事件推送能力，整套能力依托 EffiLink api.effilink.co 基础设施运行，让您专注业务开发，无需顾虑消息送达质量。"
+---
+
+## 使用 EffiLink 能做什么
+
+<CardGroup cols={2}>
+  <Card title="事务类邮件" icon="envelope" href="/zh/docs/transactional-email">
+    发送订单确认、密码重置、发货通知等触发式邮件。
+  </Card>
+
+  <Card title="营销类邮件" icon="bullhorn" href="/zh/docs/campaign-email">
+    给特定联系人对象发送通讯、促销和公告等营销邮件。
+  </Card>
+
+  <Card title="短信" icon="mobile" href="/zh/docs/sms-send">
+    发送单条或批量短信，用于通知和促销。
+  </Card>
+
+  <Card title="Webhooks" icon="webhook" href="/zh/docs/webhooks">
+    实时接收每次投递、打开、点击、退信和退订事件。
+  </Card>
+</CardGroup>
+
+## API 基础
+
+EffiLink 提供地理分布式的 API 端点，以确保高可用性和最佳访问性能。为了获得最佳延迟和可靠性，我们建议选择地理位置上离您的用户或应用服务器最近的端点：
+
+- 中国大陆：
+  ```text
+  https://api.effilink.co
+  ```
+- 中国香港：
+  ```text
+  https://hk-api.effilink.co
+  ```
+- 欧洲：
+  ```text
+  https://eu-api.effilink.co 
+  ```
+
+每个请求必须：
+
+- 使用 **HTTPS** 发送
+- 使用 `Content-Type: application/json`
+- 包含身份验证头（`ApiKey` 或 `OAuth`）
+
+<Note>
+  参数名区分**大小写**。所有请求和响应数据都使用 UTF-8 编码。
+</Note>
+
+## HTTP 响应代码
+
+| 代码 | 状态 | 含义 |
+| --- | --- | --- |
+| 200 | OK | 请求成功 |
+| 400 | Bad Request | 数据格式无效或缺少必需参数 |
+| 404 | Not Found | 接口不存在 |
+| 405 | Method Not Allowed | 请按规定使用 GET 或 POST |
+| 429 | Too Many Requests | 超过频率限制 |
+|  |  |  |
+
+## 分页
+
+列表和搜索接口返回分页结果。使用以下查询参数来导航页面：
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `pageSize` | integer | 每页记录数 |
+| `pageIndex` | integer | 页码，从 `1` 开始 |
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card title="快速开始" icon="rocket" href="/zh/docs/quickstart">
+    不到 5 分钟即可发送第一封邮件。
+  </Card>
+
+  <Card title="身份验证" icon="key" href="/zh/docs/authentication">
+    了解如何对 API 请求进行身份验证。
+  </Card>
+</CardGroup>

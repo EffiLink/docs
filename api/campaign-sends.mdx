@@ -1,0 +1,476 @@
+---
+title: "Campaign Email Sends — POST /v5/campaign/mail/sends"
+sidebarTitle: "Send Campaign"
+description: "Create, schedule, cancel, retrieve, and delete campaign email send tasks. Covers all four EffiLink Campaign Sends API endpoints in one reference."
+---
+
+## Overview
+
+The Campaign Sends API lets you manage the full lifecycle of a campaign email send task — from creation and scheduling to retrieval, cancellation, and deletion. All endpoints require authentication via an `ApiKey` or `OAuth` header.
+
+**Base URL:** `https://api.effilink.co`
+
+---
+
+## Create Send Task
+
+<ParamField path="POST" type="string">
+  `/v5/campaign/mail/sends`
+</ParamField>
+
+Creates a new campaign email send task. The task can be saved immediately without sending, scheduled for a future time, or dispatched right away.
+
+### Request Parameters
+
+<ParamField body="mailName" type="string" required>
+  The name of the send task. Maximum 200 bytes. Must be unique within your team.
+</ParamField>
+
+<ParamField body="senderMail" type="string" required>
+  The verified sender email address. Must be an address already verified in your EffiLink account.
+</ParamField>
+
+<ParamField body="senderName" type="string">
+  The display name shown to recipients in the "From" field.
+</ParamField>
+
+<ParamField body="subject" type="string">
+  The email subject line. Supports personalization tags (e.g., `{{firstName}}`).
+</ParamField>
+
+<ParamField body="content" type="string">
+  The HTML body content of the email. Supports personalization tags.
+</ParamField>
+
+<ParamField body="sendDate" type="string">
+  Scheduled send time in ISO 8601 UTC format (e.g., `2025-06-01T10:00:00Z`). Omit to send immediately.
+</ParamField>
+
+<ParamField body="onlySave" type="boolean">
+  Set to `true` to save the task as a draft without sending. When `true`, `sendListNames` is not required. Defaults to `false`.
+</ParamField>
+
+<ParamField body="sendListNames" type="array[string]">
+  An array of target contact list names. Required unless `onlySave` is `true`.
+
+  ```json
+  ["Newsletter Subscribers", "VIP Customers"]
+  ```
+</ParamField>
+
+<ParamField body="repelListNames" type="array[string]">
+  An array of exclusion contact list names. Recipients on these lists will be excluded from the send.
+</ParamField>
+
+<ParamField body="replyTo" type="string">
+  The reply-to email address.
+</ParamField>
+
+<ParamField body="attachment" type="object">
+  A single file attachment to include with the email.
+
+  <Expandable title="attachment properties">
+    <ParamField body="fileName" type="string" required>
+      The filename, including extension (e.g., `report.pdf`).
+    </ParamField>
+
+    <ParamField body="fileData" type="string" required>
+      The Base64-encoded content of the file.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="languageCode" type="string">
+  The language code for the email. Controls locale-aware rendering.
+
+  Accepted values: `zh-cn`(Chinese Simplified), `en`(English), `ja`(Japanese), `ko`(Korean), `de` (German), `tt`(Russian), `es`(Spanish), `zh-tw`(Traditional Chinese), `ar`(Arabic), `pt-br`(Portuguese - Brazil), `id`(Indonesian), `vi`(Vietnamese), `th`(Thai), `fr` (French)
+</ParamField>
+
+<ParamField body="marketName" type="string">
+  Associates this send task with a named marketing activity.
+</ParamField>
+
+<ParamField body="subscriptName" type="string">
+  Associates this send task with a named subscription.
+</ParamField>
+
+<ParamField body="projectCode" type="string">
+  Associates this send task with a project. If the project does not exist, it will be created automatically.
+</ParamField>
+
+<ParamField body="editorType" type="string">
+  The editor type used to compose the email. Defaults to `DRAG`.
+
+  | Value | Description |
+  | --- | --- |
+  | `DRAG` | Drag-and-drop visual editor (default) |
+  | `CLASSIC` | HTML code editor |
+</ParamField>
+
+<ParamField body="createUserName" type="string">
+  Creator username. Please check the page and obtain it.
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  Set to `true` to run in sandbox mode. Emails are processed but not actually delivered.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  HTTP-style status code. `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable status message. Empty string on success.
+</ResponseField>
+
+<ResponseField name="id" type="long">
+  The internal numeric ID of the newly created send task.
+</ResponseField>
+
+<ResponseField name="guid" type="string">
+  A globally unique identifier (GUID) for the send task.
+</ResponseField>
+
+### Error Codes
+
+| Code | Message | Cause |
+| --- | --- | --- |
+| `400` | Missing required parameter | A required field is absent from the request |
+| `400` | mailName too long | `mailName` exceeds 200 bytes |
+| `400` | Invalid sendDate | `sendDate` is not valid ISO 8601 UTC format |
+| `400` | Missing attachment data | `attachment` object is incomplete (missing `fileName` or `fileData`) |
+| `400` | Missing send lists | `sendListNames` is empty and `onlySave` is not `true` |
+| `403` | Send list not found | One or more names in `sendListNames` do not exist |
+| `403` | Exclusion list not found | One or more names in `repelListNames` do not exist |
+| `500` | Task creation failed | An internal server error occurred |
+
+### Example Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/sends \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "mailName": "May Newsletter",
+    "senderMail": "newsletter@yourdomain.com",
+    "senderName": "Your Company",
+    "subject": "What'\''s new this month",
+    "content": "<p>Hello {{name}},</p><p>Here are this month'\''s highlights...</p>",
+    "sendListNames": ["Newsletter Subscribers"],
+    "repelListNames": ["Unsubscribed"],
+    "sendDate": "2025-06-01T10:00:00Z"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "code": 200,
+  "message": "",
+  "id": 1120,
+  "guid": "915cb709ac96418495fcf4f666f15c0d"
+}
+```
+
+---
+
+## Cancel Send Task
+
+<ParamField path="POST" type="string">
+  `/v5/campaign/mail/cancel`
+</ParamField>
+
+Cancels a scheduled send task. Only tasks with a future `sendDate` (i.e., not yet dispatched) can be cancelled.
+
+### Request Parameters
+
+<ParamField body="mailName" type="string" required>
+  The name of the send task to cancel.
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  Set to `true` to cancel a task that was created in sandbox mode.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable status message. Empty string on success.
+</ResponseField>
+
+### Example Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/cancel \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "mailName": "May Newsletter"
+  }'
+```
+
+---
+
+## Get Send Tasks
+
+<ParamField path="POST" type="string">
+  `/v5/campaign/mail/get`
+</ParamField>
+
+Retrieves a paginated list of campaign send tasks, with optional filters. Includes full task details and send statistics.
+
+### Request Parameters
+
+<ParamField body="mailName" type="string">
+  Filter results to tasks whose name contains this value.
+</ParamField>
+
+<ParamField body="subject" type="string">
+  Filter results to tasks whose subject contains this value.
+</ParamField>
+
+<ParamField body="senderMail" type="string">
+  Filter results to tasks sent from this email address.
+</ParamField>
+
+<ParamField body="type" type="string">
+  Filter by task type. Accepted values: `MailList`, `ABTest`.
+</ParamField>
+
+<ParamField body="guid" type="string">
+  The GUID is related to mail tasks.
+</ParamField>
+
+<ParamField body="allTeam" type="boolean">
+  Set to `true` to return tasks across all teams in your account. Defaults to `false` (current team only).
+</ParamField>
+
+<ParamField body="mailStatus" type="array[int]">
+  Filter results by task status. Accepted values: `-1` (draft), `1` (sending), `2` (send complete), `4` (send failed). Omit to return all statuses.
+
+  ```json
+  [-1, 2]
+  ```
+</ParamField>
+
+<ParamField body="pageSize" type="int">
+  Number of results per page. Defaults to `10`.
+</ParamField>
+
+<ParamField body="pageIndex" type="int">
+  Page number (1-based). Defaults to `1`.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable status message.
+</ResponseField>
+
+<ResponseField name="totalRecords" type="int">
+  Total number of tasks matching the filter criteria.
+</ResponseField>
+
+<ResponseField name="mailList" type="array[object]">
+  An array of send task objects.
+
+  <Expandable title="mailList[] properties">
+    <ResponseField name="mailName" type="string">
+      The name of the send task.
+    </ResponseField>
+
+    <ResponseField name="subject" type="string">
+      The email subject line.
+    </ResponseField>
+
+    <ResponseField name="mailContent" type="string">
+      The HTML body content.
+    </ResponseField>
+
+    <ResponseField name="senderName" type="string">
+      The sender display name.
+    </ResponseField>
+
+    <ResponseField name="senderMail" type="string">
+      The sender email address.
+    </ResponseField>
+
+    <ResponseField name="replyTo" type="string">
+      The reply-to email address.
+    </ResponseField>
+
+    <ResponseField name="rcptEmails" type="array[string]">
+      Individual recipient email addresses (if applicable).
+    </ResponseField>
+
+    <ResponseField name="repelEmails" type="array[string]">
+      Individual excluded email addresses (if applicable).
+    </ResponseField>
+
+    <ResponseField name="rcptListNames" type="array[string]">
+      Names of the target contact lists.
+    </ResponseField>
+
+    <ResponseField name="repelListNames" type="array[string]">
+      Names of the exclusion contact lists.
+    </ResponseField>
+
+    <ResponseField name="sendByDateTime" type="int">
+      Scheduled or actual send time, expressed as a Unix timestamp in **milliseconds** (e.g., `1761199614000`).
+    </ResponseField>
+
+    <ResponseField name="taskType" type="string">
+      Task type: `MailList` or `ABTest`.
+    </ResponseField>
+
+    <ResponseField name="mailStatus" type="int">
+      Current status of the task. Possible values: `-1` (draft), `1` (sending), `2` (send complete), `4` (send failed).
+    </ResponseField>
+
+    <ResponseField name="guid" type="string">
+      Globally unique identifier for the task.
+    </ResponseField>
+
+    <ResponseField name="teamName" type="string">
+      The team that owns this task.
+    </ResponseField>
+
+    <ResponseField name="languageCode" type="string">
+      Language code associated with the task.
+    </ResponseField>
+
+    <ResponseField name="marketName" type="string">
+      Associated marketing activity name.
+    </ResponseField>
+
+    <ResponseField name="subscriptName" type="string">
+      Associated subscription name.
+    </ResponseField>
+
+    <ResponseField name="projectCode" type="string">
+      Associated project code.
+    </ResponseField>
+
+    <ResponseField name="reviewerName" type="string">
+      Name of the reviewer who approved the task (if applicable).
+    </ResponseField>
+
+    <ResponseField name="mailSummary" type="string">
+      Email task summary.
+    </ResponseField>
+
+    <ResponseField name="audit" type="boolean">
+      Check whether email tasks are intelligently checked.
+    </ResponseField>
+
+    <ResponseField name="abTestTimeLimit" type="int">
+      Test duration for AB test tasks (unit: hours). Returns only when the mail task type is AB Test.
+    </ResponseField>
+
+    <ResponseField name="mailStats" type="object">
+      Delivery and engagement statistics for the task.
+
+      <Expandable title="mailStats properties">
+        <ResponseField name="sentCount" type="int">
+          Total number of emails sent.
+        </ResponseField>
+
+        <ResponseField name="deliveredCount" type="int">
+          Number of emails confirmed as delivered.
+        </ResponseField>
+
+        <ResponseField name="openCount" type="int">
+          Number of unique opens.
+        </ResponseField>
+
+        <ResponseField name="clickCount" type="int">
+          Number of unique link clicks.
+        </ResponseField>
+
+        <ResponseField name="hardBounce" type="int">
+          Number of hard bounces (permanent delivery failures).
+        </ResponseField>
+
+        <ResponseField name="softBounce" type="int">
+          Number of soft bounces (temporary delivery failures).
+        </ResponseField>
+
+        <ResponseField name="unsentCount" type="int">
+          Number of contacts filtered out and not sent to.
+        </ResponseField>
+
+        <ResponseField name="unsubscribeCount" type="int">
+          Number of unsubscribes triggered by this send.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "pageSize": 10,
+    "pageIndex": 1
+  }'
+```
+
+---
+
+## Delete Send Task
+
+<ParamField path="POST" type="string">
+  `/v5/campaign/mail/delete`
+</ParamField>
+
+Permanently deletes a campaign send task by name.
+
+### Request Parameters
+
+<ParamField body="mailName" type="string" required>
+  The name of the send task to delete.
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  Set to `true` to delete a task that was created in sandbox mode.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable status message. Empty string on success.
+</ResponseField>
+
+### Example Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/delete \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "mailName": "May Newsletter"
+  }'
+```

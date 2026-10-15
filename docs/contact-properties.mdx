@@ -1,0 +1,92 @@
+---
+title: "EffiLink Contact Properties: Fields and Identifiers"
+sidebarTitle: "Contact Properties"
+description: "Reference for all EffiLink system contact properties — identifiers, types, and descriptions — plus email bounce flag values and custom property limits."
+---
+
+Contact properties are the individual data fields stored on each contact record in EffiLink. Every contact has a set of **system predefined properties** — standard fields like name, email, and engagement metrics that EffiLink tracks automatically — as well as support for **custom properties** you define for your own business data. Property identifiers are the string keys you use when mapping columns during a bulk import or when reading property values from the API.
+
+---
+
+## System predefined properties
+
+The table below lists every built-in property available on a contact record. Use the **Identifier** column as the `propertyName` value in `contactDataMapping` arrays and when filtering or updating contacts via the API.
+
+| Identifier | Type | Description |
+|---|---|---|
+| `name` | string | Contact display name. Defaults to the email address if not set. |
+| `email` | string | Primary email address. Used as the main contact identifier. |
+| `phoneNumber` | string | Phone number in any standard format. |
+| `properties.touch_time` | date | Timestamp of the last time this contact was contacted. |
+| `properties.source` | string | Lead source — how the contact was originally acquired (e.g., "Website", "Trade Show"). |
+| `properties.company` | string | Company or organization name. |
+| `properties.company_address` | string | Company mailing address. |
+| `properties.lifecycle_stage` | string | Current lifecycle stage (e.g., "Lead", "Customer", "Churned"). |
+| `properties.city` | string | Contact's location or region. |
+| `properties.industry` | string | Industry or department the contact belongs to. |
+| `properties.lead_response_time` | date | Timestamp of the most recent lifecycle stage change. |
+| `properties.birthday` | date | Contact's date of birth. |
+| `properties.email_bounced_flag` | string | Email filter status code. See [Email bounce flag values](#email-bounce-flag-values) below. |
+| `properties.email_bounced_time` | date | Timestamp when the email filter status was last set. |
+| `properties.email_open_count` | int | Total number of times this contact has opened an email. |
+| `properties.email_open_last_time` | date | Timestamp of the most recent email open. |
+| `properties.email_click_count` | int | Total number of tracked link clicks across all emails. |
+| `properties.email_click_last_time` | date | Timestamp of the most recent tracked link click. |
+
+---
+
+## Email bounce flag values
+
+The `properties.email_bounced_flag` field indicates the current suppression or filter status of a contact's email address. EffiLink checks this flag before every send — contacts with a non-zero flag value may be silently dropped depending on the flag type.
+
+| Value | Status | Description |
+|---|---|---|
+| `0` | Normal | Address is in good standing. No filter applied. |
+| `1` | Hard bounce filter | Address permanently rejected delivery (e.g., mailbox does not exist). Emails will not be sent to this address. |
+| `2` | Unsubscribe filter | Contact opted out. Emails will not be sent to this address. |
+| `3` | Complaint filter | Contact marked a previous email as spam. Emails will not be sent to this address. |
+| `100` | Admin filter | Manually suppressed by an account administrator. |
+| `1000` | System forced filter | Suppressed by EffiLink's abuse or compliance systems. Cannot be overridden via the API. |
+
+<Warning>
+Do not attempt to clear `email_bounced_flag` values of `1`, `2`, or `3` without a legitimate re-permission event (such as a fresh opt-in from the contact). Sending to suppressed addresses damages your sender reputation and may violate anti-spam regulations.
+</Warning>
+
+You will also encounter these codes in webhook payloads — specifically in the `Reason` field of **Dropped** events. See [Webhook Events](/docs/webhook-events) for details.
+
+---
+
+## Custom properties
+
+In addition to the system predefined properties, you can define your own custom properties to store business-specific data on contacts (for example, `properties.account_tier` or `properties.preferred_language`).
+
+- Each account supports up to **200 custom properties**.
+- Custom properties are created in the EffiLink dashboard under **Settings → Contact Properties**.
+- Once created, a custom property has its own identifier string (e.g., `properties.account_tier`) that you can use in `contactDataMapping` exactly like any system property.
+
+---
+
+## Using property identifiers in bulk import
+
+When calling `POST /v5/contacts/imports`, the `contactDataMapping` array tells EffiLink how to interpret each column of your `contactData`. Set `propertyName` to the **Identifier** from the table above for each column you are importing.
+
+**Example — importing email, name, company, and lifecycle stage:**
+
+```json
+{
+  "contactData": [
+    ["jane@example.com", "Jane Smith", "Acme Corp", "Customer"],
+    ["bob@example.com", "Bob Jones", "Globex", "Lead"]
+  ],
+  "contactDataMapping": [
+    { "columnNum": 0, "propertyName": "email" },
+    { "columnNum": 1, "propertyName": "name" },
+    { "columnNum": 2, "propertyName": "properties.company" },
+    { "columnNum": 3, "propertyName": "properties.lifecycle_stage" }
+  ],
+  "updateMode": 1,
+  "listName": "CRM Sync - Q3"
+}
+```
+
+Any column not included in `contactDataMapping` is ignored. You do not need to map every column in your source data — only the ones you want EffiLink to store.

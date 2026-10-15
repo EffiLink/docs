@@ -1,0 +1,92 @@
+---
+title: "联系人属性"
+sidebarTitle: "联系人属性"
+description: "EffiLink 系统联系人属性的完整参考——标识符、类型与说明，以及邮件退信标志值和自定义属性上限。"
+---
+
+联系人属性是 EffiLink 中每条联系人记录上存储的单个数据字段。每个联系人都拥有一组 **系统预定义属性**（例如姓名、邮箱和 EffiLink 自动跟踪的互动指标等标准字段），同时也支持您为自己业务数据定义的 **自定义属性**。属性标识符是您在批量导入映射列，或通过 API 读取属性值时使用的字符串键。
+
+---
+
+## 系统预定义属性
+
+下表列出联系人记录上所有内置属性。在 `contactDataMapping` 数组的 `propertyName` 中以及通过 API 过滤或更新联系人时，请使用 **标识符** 一列的值。
+
+| 标识符 | 类型 | 说明 |
+| --- | --- | --- |
+| `name` | string | 联系人显示名。未设置时默认为邮箱地址。 |
+| `email` | string | 主邮箱地址，作为联系人的主要标识。 |
+| `phoneNumber` | string | 任意标准格式的手机号。 |
+| `properties.touch_time` | date | 最近一次联系该联系人的时间戳。 |
+| `properties.source` | string | 线索来源（例如 “Website”、“Trade Show”）。 |
+| `properties.company` | string | 公司或组织名称。 |
+| `properties.company_address` | string | 公司通讯地址。 |
+| `properties.lifecycle_stage` | string | 当前生命周期阶段（例如 “Lead”、“Customer”、“Churned”）。 |
+| `properties.city` | string | 联系人所在地或地区。 |
+| `properties.industry` | string | 联系人所属行业或部门。 |
+| `properties.lead_response_time` | date | 最近一次生命周期阶段变更的时间戳。 |
+| `properties.birthday` | date | 联系人生日。 |
+| `properties.email_bounced_flag` | string | 邮件过滤状态码。详见下文[邮件退信标志值](#邮件退信标志值)。 |
+| `properties.email_bounced_time` | date | 最近一次设置邮件过滤状态的时间戳。 |
+| `properties.email_open_count` | int | 该联系人打开邮件的总次数。 |
+| `properties.email_open_last_time` | date | 最近一次邮件打开时间。 |
+| `properties.email_click_count` | int | 所有邮件中被跟踪链接点击的总次数。 |
+| `properties.email_click_last_time` | date | 最近一次被跟踪链接点击时间。 |
+
+---
+
+## 邮件退信标志值
+
+`properties.email_bounced_flag` 字段表示联系人邮箱地址当前的抑制或过滤状态。EffiLink 在每次发送前都会检查该标志——标志值非零的联系人可能会根据类型被静默丢弃。
+
+| 值 | 状态 | 说明 |
+| --- | --- | --- |
+| `0` | 正常 | 地址状态良好，无过滤。 |
+| `1` | 硬退信过滤 | 地址被永久拒收（例如邮箱不存在）。不会向该地址发送邮件。 |
+| `2` | 退订过滤 | 联系人已退订。不会向该地址发送邮件。 |
+| `3` | 投诉过滤 | 联系人曾将邮件标记为垃圾邮件。不会向该地址发送邮件。 |
+| `100` | 管理员过滤 | 由账户管理员手动抑制。 |
+| `1000` | 系统强制过滤 | 由 EffiLink 的滥用或合规系统抑制，无法通过 API 覆盖。 |
+
+<Warning>
+  不要在缺乏合法再授权事件（例如联系人重新订阅）的情况下清除值为 `1`、`2` 或 `3` 的 `email_bounced_flag`。向被抑制的地址发送邮件会损害您的发件人声誉，并可能违反反垃圾邮件法规。
+</Warning>
+
+您也会在 webhook 载荷中遇到这些代码，具体在 **Dropped** 事件的 `Reason` 字段中。详情见[Webhook 事件](/zh/docs/webhook-events)。
+
+---
+
+## 自定义属性
+
+除系统预定义属性外，您还可以定义自己的自定义属性，用于在联系人上存储业务数据（例如 `properties.account_tier` 或 `properties.preferred_language`）。
+
+- 每个账户最多支持 **200 个自定义属性**。
+- 自定义属性在 EffiLink 控制台的 **设置 → 联系人属性** 中创建。
+- 创建后，自定义属性拥有独立的标识符字符串（例如 `properties.account_tier`），可像任意系统属性一样在 `contactDataMapping` 中使用。
+
+---
+
+## 在批量导入中使用属性标识符
+
+调用 `POST /v5/contacts/imports` 时，`contactDataMapping` 数组告诉 EffiLink 如何解释 `contactData` 中的每一列。对每列被导入的字段，将 `propertyName` 设为上表中的 **标识符**。
+
+**示例：导入 email、name、company 和 lifecycle stage：**
+
+```json
+{
+  "contactData": [
+    ["jane@example.com", "Jane Smith", "Acme Corp", "Customer"],
+    ["bob@example.com", "Bob Jones", "Globex", "Lead"]
+  ],
+  "contactDataMapping": [
+    { "columnNum": 0, "propertyName": "email" },
+    { "columnNum": 1, "propertyName": "name" },
+    { "columnNum": 2, "propertyName": "properties.company" },
+    { "columnNum": 3, "propertyName": "properties.lifecycle_stage" }
+  ],
+  "updateMode": 1,
+  "listName": "CRM Sync - Q3"
+}
+```
+
+未在 `contactDataMapping` 中出现的列会被忽略。您无需映射源数据的每一列，只映射希望 EffiLink 保存的字段即可。

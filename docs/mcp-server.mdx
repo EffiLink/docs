@@ -1,0 +1,97 @@
+---
+title: "MCP Query Server"
+sidebarTitle: "MCP Query Server"
+description: "Connect AI tools like Claude, Cursor, and ChatGPT to the EffiLink docs via our Model Context Protocol server."
+---
+
+EffiLink publishes a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for this documentation site. Any MCP-compatible AI client can connect to it to search these docs, read full pages, and answer questions using up-to-date EffiLink content instead of relying on the model's training data alone.
+
+<Info>
+  This server is **read-only**. It searches and returns documentation content — it does not send emails or SMS, create contacts, or call any authenticated EffiLink API on your behalf. 
+
+  To make live API calls, use MCP Action Server or authenticate directly with your API key through the  [REST API](/api/transactional-send) directly.
+</Info>
+
+## Server URL
+
+```text
+https://developer.effilink.co/mcp
+```
+
+Transport: **HTTP**. No authentication is required to connect, since the server only exposes public documentation content.
+
+## Connect a client
+
+<Tabs>
+  <Tab title="Claude">
+    1. Open **Settings → Connectors** (claude.ai) or your Claude app's connector settings.
+    2. Add a custom connector and paste the server URL above.
+    3. Claude can now search and cite EffiLink docs automatically when relevant.
+  </Tab>
+  <Tab title="Cursor">
+    Add the server to your MCP config (usually `~/.cursor/mcp.json` or via **Settings → MCP**):
+
+    ```json
+    {
+      "mcpServers": {
+        "effilink": {
+          "url": "https://developer.effilink.co/mcp"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="ChatGPT">
+    1. Open **Settings → Connectors**.
+    2. Add a new connector with the server URL above.
+    3. Enable it in a chat to let ChatGPT search EffiLink docs during your conversation.
+  </Tab>
+  <Tab title="Other MCP clients">
+    Any client that supports remote HTTP MCP servers can connect using the same URL. Consult your client's documentation for where to add a custom MCP server.
+  </Tab>
+</Tabs>
+
+## What the server can do
+
+The server exposes the following tools to a connected AI client:
+
+<CardGroup cols={1}>
+  <Card title="search" icon="magnifying-glass">
+    Searches across all EffiLink documentation and returns relevant snippets with titles and links. This is the best entry point for broad or conceptual questions like "how does sender verification work."
+  </Card>
+
+  <Card title="query_docs_filesystem" icon="folder-tree">
+    Runs read-only shell-style commands (`rg`, `grep`, `cat`, `head`, `tree`, `jq`, and similar) against a sandboxed, in-memory copy of the docs and OpenAPI spec. Useful for exact keyword matches or reading a full page or API schema, such as listing every endpoint in the OpenAPI spec.
+  </Card>
+
+  <Card title="submit_feedback" icon="flag">
+    Lets an AI agent report a documentation problem — incorrect, outdated, confusing, or incomplete content — directly to the EffiLink docs team on your behalf.
+  </Card>
+</CardGroup>
+
+The server also publishes a **skill resource** describing when an agent should reach for EffiLink: sending transactional messages (order confirmations, password resets, OTPs), running marketing campaigns, managing contacts and lists, or consuming delivery and engagement events via webhooks. This helps AI tools recognize when EffiLink is relevant even if you don't mention it by name.
+
+## Example prompts
+
+Once connected, you can ask your AI client things like:
+
+- "How do I authenticate requests to the EffiLink API?"
+- "What are the rate limits for the transactional email endpoint?"
+- "List all the webhook event types EffiLink supports."
+- "Show me the request body for sending a batch SMS."
+
+The client will use the `search` and `query_docs_filesystem` tools to pull the answer from current EffiLink docs and link back to the relevant page.
+
+## Limitations
+
+- **Public content only.** The server only indexes published, public documentation pages.
+- **No write actions.** It cannot send messages, create or modify contacts, or perform any authenticated operation — only your API key can do that, via the [REST API](/api/transactional-send).
+- **Rate limited.** EffiLink applies rate limits to protect the server's availability under heavy use.
+
+<Card title="Want to take real actions?" icon="bolt" href="/docs/mcp-action-server">
+  See the MCP Action Server page for a self-hosted server that lets AI clients call the Transactional Messaging API — including sending real messages — using your own API key.
+</Card>
+
+<Card title="Need an API key instead?" icon="key" href="https://app.effilink.co/setting/apiKey">
+  Get your EffiLink API key to start making live requests to the API.
+</Card>

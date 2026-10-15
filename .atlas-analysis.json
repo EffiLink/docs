@@ -1,0 +1,167 @@
+{
+  "projectType": "api-service",
+  "projectName": "EffiLink",
+  "projectDescription": "EffiLink is a cloud messaging platform API that enables developers to send transactional and marketing emails, bulk SMS, manage contacts, and track engagement events.",
+  "theme": "luma",
+  "primaryColor": "#076dfc",
+  "lightColor": "#7cb4fc",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "docs/overview",
+              "docs/quickstart",
+              "docs/key-concepts"
+            ]
+          },
+          {
+            "group": "Authentication",
+            "pages": [
+              "docs/authentication",
+              "docs/api-keys",
+              "docs/oauth2"
+            ]
+          },
+          {
+            "group": "Email",
+            "pages": [
+              "docs/transactional-email",
+              "docs/campaign-email",
+              "docs/smtp-integration",
+              "docs/email-tracking",
+              "docs/sandbox-mode"
+            ]
+          },
+          {
+            "group": "SMS",
+            "pages": [
+              "docs/sms-send",
+              "docs/sms-batch"
+            ]
+          },
+          {
+            "group": "Contacts & Lists",
+            "pages": [
+              "docs/contacts",
+              "docs/lists",
+              "docs/contact-properties"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "docs/webhooks",
+              "docs/webhook-events"
+            ]
+          },
+          {
+            "group": "Limits & Quotas",
+            "pages": [
+              "docs/rate-limits",
+              "docs/platform-quotas"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Transactional Email",
+            "pages": [
+              "api/transactional-send",
+              "api/transactional-batch",
+              "api/transactional-report"
+            ]
+          },
+          {
+            "group": "Campaign Email",
+            "pages": [
+              "api/campaign-sends",
+              "api/campaign-abtest",
+              "api/campaign-templates",
+              "api/campaign-report"
+            ]
+          },
+          {
+            "group": "SMS",
+            "pages": [
+              "api/sms-send",
+              "api/sms-report"
+            ]
+          },
+          {
+            "group": "Contacts & Lists",
+            "pages": [
+              "api/contacts",
+              "api/lists",
+              "api/senders"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api/webhook-config"
+            ]
+          },
+          {
+            "group": "Authentication",
+            "pages": [
+              "api/oauth"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Transactional email sending via REST API or SMTP",
+    "Bulk marketing email campaigns with contact list targeting",
+    "A/B testing for campaign emails",
+    "Personalized batch SMS with template support",
+    "Contact and contact list management",
+    "Real-time webhook event notifications (delivered, opened, clicked, bounced, etc.)",
+    "Email open and click tracking",
+    "Sandbox mode for safe testing",
+    "OAuth 2.0 and API Key authentication",
+    "Scheduled future sending (up to 72 hours ahead for transactional, 30 days for A/B tests)",
+    "SMTP extensions via X-Easeye headers",
+    "Verified sender domain management"
+  ],
+  "publicApiSurface": [
+    "POST /v5/transactional/mail/sends_customised",
+    "POST /v5/transactional/mail/stats/get",
+    "POST /v5/campaign/mail/sends",
+    "POST /v5/campaign/mail/sends_abtest",
+    "POST /v5/campaign/mail/cancel",
+    "POST /v5/campaign/mail/get",
+    "POST /v5/campaign/mail/delete",
+    "POST /v5/campaign/mail/stats/get",
+    "POST /v5/campaign/mail/template/add",
+    "POST /v5/campaign/mail/template/get",
+    "POST /v5/campaign/mail/template/delete",
+    "POST /v5/sms/sends",
+    "POST /v5/sms/stats/get",
+    "POST /v5/contacts/upsert",
+    "POST /v5/contacts/imports",
+    "POST /v5/contacts/get",
+    "POST /v5/contacts/list/get",
+    "POST /v5/contacts/delete",
+    "POST /v5/lists/add",
+    "POST /v5/lists/get",
+    "POST /v5/lists/delete",
+    "POST /v5/verified_senders/get",
+    "POST /v5/verified_senders/add",
+    "POST /v5/verified_senders/verify",
+    "POST /v5/verified_senders/delete",
+    "POST /v5/webhook/get",
+    "POST /v5/webhook/save",
+    "GET /v5/auth/oauth/authorize",
+    "GET /v5/auth/oauth/token"
+  ]
+}

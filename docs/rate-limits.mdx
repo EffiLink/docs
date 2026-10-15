@@ -1,0 +1,77 @@
+---
+title: "EffiLink API Rate Limits and SMTP Throttling"
+sidebarTitle: "Rate Limits"
+description: "Understand EffiLink's per-endpoint Web API rate limits and SMTP connection throttling, and learn how to handle 429 errors gracefully in your integration."
+---
+
+Rate limits protect the stability and fairness of the EffiLink platform for all users. The platform enforces two categories of limits: **SMTP throttling** for email delivery via the mail protocol, and **Web API rate limits** that apply per endpoint for REST calls. Exceeding either type of limit causes your requests to be rejected until the rate window resets.
+
+## SMTP rate limits
+
+If you send email through EffiLink's SMTP interface, the following connection and message-size constraints apply:
+
+| Limit | Value |
+|-------|-------|
+| Maximum concurrent connections | 100 |
+| Maximum single email size | 10 MB |
+
+<Note>
+  If you need to send emails larger than 10 MB, contact [EffiLink Support](mailto:support@effilink.com) to discuss options for your account.
+</Note>
+
+## Web API rate limits
+
+REST API limits are enforced per endpoint. Depending on the endpoint, limits are expressed as requests per hour, requests per second, or both.
+
+| Endpoint | Per Hour | Per Second |
+|----------|:--------:|:----------:|
+| `/v5/transactional` | — | 10 |
+| `/v5/verified_senders` | 1,000 | — |
+| `/v5/contacts` | 7,200 | 2 |
+| `/v5/campaign` | 7,200 | 2 |
+| All other endpoints | 1,000 | — |
+
+- A **per-hour** limit caps the total number of requests you can make to that endpoint within any rolling 60-minute window.
+- A **per-second** limit caps the instantaneous burst rate to prevent traffic spikes.
+- Where both apply, both limits must be satisfied simultaneously.
+
+## Handling HTTP 429 Too Many Requests
+
+When you exceed a rate limit, the API returns:
+
+```http
+HTTP/1.1 429 Too Many Requests
+```
+
+Your application should handle `429` responses gracefully rather than treating them as fatal errors. A recommended retry strategy:
+
+1. **Detect the 429** — Check the HTTP status code on every response.
+2. **Back off** — Wait before retrying. Start with a short delay (e.g. 1 second) and increase it exponentially on repeated `429` responses (e.g. 2 s, 4 s, 8 s).
+3. **Respect the reset window** — If the response includes a `Retry-After` header, wait at least that many seconds before your next attempt.
+4. **Resume** — Once the rate window resets, resume normal request flow.
+
+```javascript
+// Example: simple exponential back-off
+async function sendWithRetry(payload, maxRetries = 5) {
+  let delay = 1000; // start at 1 second
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const res = await fetch('https://api.effilink.co/v5/sms/sends', {
+      method: 'POST',
+      headers: { 'ApiKey': 'YOUR_API_KEY', 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.status !== 429) return res;
+    await new Promise(r => setTimeout(r, delay));
+    delay *= 2; // double the wait time on each retry
+  }
+  throw new Error('Max retries reached');
+}
+```
+
+## Tips for staying within limits
+
+- **Batch your sends.** The `/v5/sms/sends` endpoint accepts up to 100 recipients per request. Grouping recipients reduces the total number of API calls required. See [Batch Personalized SMS](/docs/sms-batch) for details.
+- **Schedule bulk operations off-peak.** If you need to make a high volume of calls (e.g. syncing contacts or triggering campaigns), spread them over time rather than issuing them all at once.
+- **Cache read responses.** For endpoints like `/v5/verified_senders` or `/v5/contacts`, cache the results locally and refresh only when your data changes rather than polling on a tight loop.
+- **Monitor your usage.** Keep track of your request rate in your application layer so you can proactively throttle before hitting platform limits rather than reacting to `429` errors.
+- **Use the transactional endpoint judiciously.** At 10 requests/second, `/v5/transactional` has a strict burst cap. Queue outgoing transactional messages and dispatch them at a controlled rate to avoid unexpected rejections.

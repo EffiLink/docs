@@ -1,0 +1,189 @@
+---
+title: "EffiLink Webhooks Configuration"
+sidebarTitle: "Webhook Configuration"
+description: "Configure EffiLink webhooks to receive real-time email event notifications. Learn setup, payload format, security best practices, and event types."
+---
+
+Webhooks let EffiLink push email event data directly to your own HTTP endpoint in near real-time — no polling required. Every time a significant event occurs (an email is delivered, a link is clicked, a recipient unsubscribes), EffiLink batches the event data and POSTs it as JSON to the URL you configure. This makes webhooks the right tool for building live dashboards, feeding analytics pipelines, triggering automated workflows, and maintaining an off-platform audit log.
+
+---
+
+## How webhooks work
+
+1. **An event occurs** — for example, a recipient opens an email.
+2. **EffiLink batches the event** — events are grouped into batches of up to **1,000** per push to keep throughput high without overwhelming your endpoint.
+3. **EffiLink POSTs to your endpoint** — a JSON array is sent to your configured callback URL over HTTPS.
+4. **Your server processes the payload** — parse the array and handle each event object.
+
+**Request details**
+
+| Detail | Value |
+| --- | --- |
+| Method | `HTTP POST` |
+| Content-Type | `application/json;charset=UTF-8` |
+| User-Agent | `YiyeWebhooks` |
+| Encoding | UTF-8 |
+| Body format | JSON array of event objects |
+
+---
+
+## Configure your webhook URL
+
+### Via the dashboard
+
+The simplest way to get started is to set a **default webhook URL** in the EffiLink dashboard:
+
+1. Go to **Settings → Webhooks**.
+2. Enter your HTTPS callback URL.
+3. Select the event types you want to receive.
+4. Toggle webhooks to **Enabled** and save.
+
+All senders in your account will use this URL unless overridden.
+
+### Via the API
+
+Use the [Webhook Config API](/api/webhook-config) to read or update your webhook settings programmatically.
+
+**Get current configuration — `POST /v5/webhook/get`**
+
+No request body required. Returns the current webhook configuration:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `transEvent` | object | Boolean flags for each event type. Each key is an event name; `true` means that event type is enabled. |
+| `transEvent.dropped` | boolean | Whether `Dropped` events are enabled. |
+| `transEvent.bounced` | boolean | Whether `Bounced` events are enabled. |
+| `transEvent.delivered` | boolean | Whether `Delivered` events are enabled. |
+| `transEvent.spamReport` | boolean | Whether `SpamReport` events are enabled. |
+| `transEvent.opened` | boolean | Whether `Opened` events are enabled. |
+| `transEvent.clicked` | boolean | Whether `Clicked` events are enabled. |
+| `transEvent.unsubscribed` | boolean | Whether `Unsubscribed` events are enabled. |
+| `transCallbackUrl` | string | Default callback URL applied to all senders. |
+| `transCallbackUrlExtra` | array | Per-sender URL overrides. |
+| `transEnable` | boolean | `true` if webhooks are globally enabled. |
+
+**Save configuration — `POST /v5/webhook/save`**
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `transEvent` | object | Enable or disable individual event types. Only provided keys are updated; omitted keys retain their current values. |
+| `transEvent.dropped` | boolean | `true` to receive `Dropped` events, `false` to stop receiving them. |
+| `transEvent.bounced` | boolean | `true` to receive `Bounced` events. |
+| `transEvent.delivered` | boolean | `true` to receive `Delivered` events. |
+| `transEvent.spamReport` | boolean | `true` to receive `SpamReport` events. |
+| `transEvent.opened` | boolean | `true` to receive `Opened` events. |
+| `transEvent.clicked` | boolean | `true` to receive `Clicked` events. |
+| `transEvent.unsubscribed` | boolean | `true` to receive `Unsubscribed` events. |
+| `transCallbackUrl` | string | Default HTTPS callback URL. |
+| `transCallbackUrlExtra` | array | Per-sender URL overrides. Each object: `{ "sender": "you@domain.com", "url": "https://..." }`. |
+| `transCallbackUrlExtraUpdateMode` | string | `"save"` to add/update entries, `"replace"` to replace the entire per-sender list. |
+| `transEnable` | boolean | Set to `true` to enable, `false` to disable all webhook delivery. |
+
+**Example — enable delivered and opened events with a default URL:**
+
+```json
+{
+  "transEvent": {
+    "dropped": false,
+    "bounced": false,
+    "delivered": true,
+    "spamReport": false,
+    "opened": true,
+    "clicked": false,
+    "unsubscribed": false
+  },
+  "transCallbackUrl": "https://yourapp.com/webhooks/effilink",
+  "transEnable": true
+}
+```
+
+---
+
+## Example incoming webhook payload
+
+Below is what your endpoint receives when EffiLink delivers a batch. The array may contain events of mixed types in a single push.
+
+```http
+POST /your-webhook-endpoint HTTP/1.1
+Content-Type: application/json;charset=UTF-8
+User-Agent: YiyeWebhooks
+
+[
+  {
+    "EventCode": "Delivered",
+    "Email": "user@example.com",
+    "EventType": "Transactional",
+    "SenderEmail": "newsletter@yourcompany.com",
+    "SentMailListName": "Newsletter Subscribers",
+    "SubmitDateTimeV2": "2024-06-01T08:00:00Z",
+    "TriggeredDateTimeV2": "2024-06-01T08:00:05Z",
+    "UniqueMsgID": "msg_abc123",
+    "ReceiveServer": "mx.example.com",
+    "Guid": "guid_xyz789",
+    "MailName": "June Newsletter"
+  },
+  {
+    "EventCode": "Opened",
+    "Email": "user@example.com",
+    "EventType": "Transactional",
+    "SentMailListName": "Newsletter Subscribers",
+    "TriggeredDateTimeV2": "2024-06-01T09:15:22Z",
+    "UniqueMsgID": "msg_abc123",
+    "IP": "203.0.113.42",
+    "Platform": "iOS",
+    "BrowserType": "AppleMail",
+    "Guid": "guid_xyz789",
+    "MailName": "June Newsletter"
+  }
+]
+```
+
+---
+
+## Supported event types
+
+| EventCode | Trigger |
+| --- | --- |
+| `Dropped` | Email was not sent due to a suppression filter (bounce, unsubscribe, complaint). |
+| `Bounced` | Delivery failed — hard bounce (permanent) or soft bounce (temporary). |
+| `Delivered` | Email was accepted by the recipient's mail server. |
+| `Opened` | Recipient opened the email. One event is recorded per open. |
+| `Clicked` | Recipient clicked a tracked link. One event per click (requires click tracking to be enabled). |
+| `Unsubscribed` | Recipient clicked the unsubscribe link. |
+| `SpamReport` | Recipient reported the email as spam. |
+| `TaskStatus` | A campaign task changed status (Created or Completed). |
+
+For complete field-level documentation for each event type, see [Webhook Events](/docs/webhook-events).
+
+---
+
+## Security considerations
+
+### Validate the User-Agent header
+
+Every webhook request from EffiLink includes the header `User-Agent: YiyeWebhooks`. Check for this value on your endpoint as a first-line filter to reject requests from unknown sources.
+
+```python
+# Example: Flask endpoint with User-Agent check
+from flask import request, abort
+
+@app.route("/effilink/webhook", methods=["POST"])
+def webhook():
+    if request.headers.get("User-Agent") != "YiyeWebhooks":
+        abort(403)
+    events = request.get_json()
+    # process events...
+    return "", 200
+```
+
+### Plan for duplicate delivery (idempotency)
+
+EffiLink may retry delivery if your endpoint does not respond with an HTTP `2xx` status code within the expected window. This means your application can receive the same event more than once. Design your event handler to be **idempotent** — use `UniqueMsgID` combined with `EventCode` as a composite key to detect and skip duplicate events before writing to your database or triggering downstream actions.
+
+### Use HTTPS
+
+Always configure an HTTPS callback URL. Plain HTTP endpoints are not recommended and may be blocked in future platform versions.
+
+### Respond quickly
+
+Return an HTTP `200` response as fast as possible — ideally before any heavy processing. Offload work to a background queue so your endpoint does not time out and inadvertently trigger retries.

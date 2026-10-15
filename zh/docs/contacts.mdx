@@ -1,0 +1,206 @@
+---
+title: "联系人 "
+sidebarTitle: "联系人"
+description: "在 EffiLink 中创建、更新、导入、获取和删除联系人，使用 REST API 同步 CRM 数据并以编程方式扩展你的联系人名单。"
+---
+
+联系人 API 让您可以完全掌控 EffiLink 联系人数据库。您可以添加或更新单个联系人，从数据数组批量导入数千条记录，检索联系人详情与过滤状态，以及删除不再需要的联系人，所有操作都可以在自己的代码中完成。
+
+---
+
+## 添加或更新单个联系人
+
+`POST /v5/contacts/upsert`
+
+使用此端点可通过一次调用创建新联系人或更新已有联系人。EffiLink 会以 **email** 或 **phoneNumber** 作为匹配依据：如果该标识对应的联系人已存在，则更新其记录；否则创建新联系人。
+
+| 参数 | 类型 | 必需 | 说明 |
+| --- | --- | --- | --- |
+| `name` | string | 否 | 显示名。若省略则默认为邮箱地址。 |
+| `email` | string | 条件必需 | 未提供 `phoneNumber` 时必需。 |
+| `phoneNumber` | string | 条件必需 | 未提供 `email` 时必需。 |
+| `listName` | string | 否 | 将联系人加入该列表。列表必须已存在。 |
+| `sandboxMode` | boolean | 否 | 为 `true` 时仅模拟操作，不写入数据。 |
+
+**示例请求**
+
+```json
+{
+  "name": "Jane Smith",
+  "email": "jane@example.com",
+  "phoneNumber": "+14155550100",
+  "listName": "Newsletter Subscribers"
+}
+```
+
+**示例响应**
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+---
+
+## 批量导入联系人
+
+`POST /v5/contacts/imports`
+
+当需要一次性加载大量联系人（例如从 CRM 迁移导出或运行每晚数据管道同步）时，使用批量导入更为合适。您传入二维数组作为原始数据行，同时提供一份映射，告诉 EffiLink 每一列对应哪个联系人属性。
+
+| 参数 | 类型 | 必需 | 说明 |
+| --- | --- | --- | --- |
+| `contactData` | array[array] | 是 | 二维联系人数据数组。每个内层数组代表一个联系人。 |
+| `contactDataMapping` | array[object] | 是 | 将每列索引映射到联系人属性标识（参见[联系人属性](/zh/docs/contact-properties)）。 |
+| `updateMode` | int | 是 | `1` = 创建并更新，`2` = 仅创建，`3` = 仅更新。 |
+| `listName` | string | 否 | 导入联系人的目标分组，如不存在会自动创建。 |
+| `listDescription` | string | 否 | 分组描述，仅当新建分组时生效。 |
+| `sandboxMode` | boolean | 否 | 为 `true` 时仅校验载荷，不写入数据。 |
+
+**`contactDataMapping` 对象字段**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `columnNum` | int | `contactData` 每行中的列索引，从 0 开始。 |
+| `propertyName` | string | 属性标识，例如 `"email"`、`"name"`、`"phoneNumber"`。 |
+
+**示例请求**
+
+```json
+{
+  "contactData": [
+    ["jane@example.com", "Jane Smith"],
+    ["bob@example.com", "Bob Jones"]
+  ],
+  "contactDataMapping": [
+    { "columnNum": 0, "propertyName": "email" },
+    { "columnNum": 1, "propertyName": "name" }
+  ],
+  "updateMode": 1,
+  "listName": "Newsletter Subscribers"
+}
+```
+
+<Tip>
+  初始化新列表时建议使用 `updateMode: 2`（仅创建），避免意外覆盖已有联系人的属性。日常同步任务预期存在更新时可切换为 `updateMode: 1`。
+</Tip>
+
+---
+
+## 检索联系人
+
+`POST /v5/contacts/get`
+
+按邮箱地址获取单个联系人记录。响应中包含所有标准字段及系统跟踪的互动属性，例如退信状态和打开次数。
+
+| 参数 | 类型 | 必需 | 说明 |
+| --- | --- | --- | --- |
+| `email` | string | 是 | 要检索的联系人邮箱地址。 |
+
+**示例请求**
+
+```json
+{
+  "email": "jane@example.com"
+}
+```
+
+**响应字段**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string | 联系人唯一标识。 |
+| `name` | string | 联系人显示名。 |
+| `email` | string | 邮箱地址。 |
+| `phoneNumber` | string | 手机号。 |
+| `properties` | object | 系统与自定义属性值（参见[联系人属性](/zh/docs/contact-properties)）。 |
+| `createDate` | datetime | 联系人创建时间。 |
+| `modifyTime` | datetime | 最近一次更新时间。 |
+| `createUserId` | int | 创建该联系人的用户或 API 密钥 ID。 |
+
+**示例响应**
+
+```json
+{
+  "code": 200,
+  "message": "",
+  "contact": {
+    "id": "653f663a17e04f6e5a263de6",
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "phoneNumber": "+14155550100",
+    "properties": {
+      "properties.company": "Acme Corp",
+      "properties.email_bounced_flag": "0",
+      "properties.email_open_count": 4
+    },
+    "createDate": "2024-01-15T10:22:00Z",
+    "modifyTime": "2024-06-01T08:05:00Z",
+    "createUserId": 42
+  }
+}
+```
+
+`properties.email_bounced_flag` 字段表示联系人当前的邮件过滤状态。值为 `0` 表示地址状态良好；其他值表示抑制原因。完整标记参考请见[联系人属性](/zh/docs/contact-properties)。
+
+---
+
+## 列出分组中的联系人
+
+`POST /v5/contacts/list/get`
+
+以分页方式检索属于某个联系人列表的全部联系人。
+
+| 参数 | 类型 | 必需 | 说明 |
+| --- | --- | --- | --- |
+| `listName` | string | 是 | 要查询的联系人列表名称。 |
+| `pageSize` | int | 否 | 每页联系人数量。默认 `200`，最大 `1000`。 |
+| `pageIndex` | int | 否 | 页码，从 `1` 开始。默认 `1`。 |
+| `teamName` | string | 否 | 查询其他团队拥有的列表，需要跨团队权限。 |
+
+**示例请求**
+
+```json
+{
+  "listName": "Newsletter Subscribers",
+  "pageSize": 500,
+  "pageIndex": 1
+}
+```
+
+不断递增 `pageIndex`，直到返回数组的元素数少于 `pageSize`，即可分页遍历大列表中的所有联系人。
+
+---
+
+## 删除联系人
+
+`POST /v5/contacts/delete`
+
+从 EffiLink 账户中永久删除联系人记录。此操作不可撤销。
+
+| 参数 | 类型 | 必需 | 说明 |
+| --- | --- | --- | --- |
+| `email` | string | 是 | 要删除的联系人邮箱地址。 |
+| `sandboxMode` | boolean | 否 | 为 `true` 时仅模拟删除，不移除数据。 |
+
+**示例请求**
+
+```json
+{
+  "email": "jane@example.com"
+}
+```
+
+---
+
+## 常见场景
+
+### 同步 CRM 数据
+
+若您的 CRM 每晚导出 CSV，可将其解析为 `contactData` 数组，然后以 `updateMode: 1` 调用 `POST /v5/contacts/imports`。使用 `contactDataMapping` 映射每一列，并将导入指向该 CRM 分段专用的 `listName`。已存在的联系人会被就地更新，新邮箱地址会自动创建。
+
+### 扩充订阅列表
+
+当用户在您的网站或应用上注册时，立即以其邮箱、姓名以及欢迎序列的 `listName` 调用 `POST /v5/contacts/upsert`。由于 upsert 是幂等的，可在每次注册事件时安全调用而无需担心重复：已有联系人会以最新数据更新。

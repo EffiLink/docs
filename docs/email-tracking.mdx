@@ -1,0 +1,138 @@
+---
+title: "Track Email Opens and Clicks with EffiLink"
+sidebarTitle: "Email Tracking"
+description: "Enable open and click tracking on transactional and campaign emails, exclude individual links, and use unique message IDs for deduplication."
+---
+
+EffiLink can track when recipients open your emails and when they click links inside them. Engagement data flows back to your account in real time and can be consumed via webhooks, giving you the insight you need to understand campaign performance, debug delivery issues, and power downstream automations.
+
+Tracking is available for both the REST API and SMTP integrations and can be enabled per-request.
+
+---
+
+## Tracking opens
+
+An **open** is recorded when a recipient's email client loads the invisible tracking pixel that EffiLink embeds in the email body.
+
+### REST API
+
+Set `trackOpen` to `1` in your request body:
+
+```json
+{
+  "senderMail": "hello@yourdomain.com",
+  "to": { "email": "user@example.com" },
+  "subject": "Your weekly update",
+  "content": "<p>Here's what happened this week...</p>",
+  "trackOpen": 1
+}
+```
+
+### SMTP
+
+Add the `X-Easeye-API` header with `track_open` set to `1`:
+
+```
+X-Easeye-API: {"send_options":{"track_open":1}}
+```
+
+<Note>
+  Open tracking relies on image loading. Recipients who block remote images in their email client, or use a plain-text view, will not generate an open event even if they read the email. Open counts should be treated as a lower-bound estimate, not an exact figure.
+</Note>
+
+---
+
+## Tracking clicks
+
+A **click** is recorded when a recipient clicks a link inside the email. EffiLink rewrites all `<a href>` links to pass through its click-tracking service before redirecting to the final destination.
+
+### REST API
+
+Set `trackClick` to `1` in your request body:
+
+```json
+{
+  "trackOpen": 1,
+  "trackClick": 1
+}
+```
+
+### SMTP
+
+Add `track_click` to the `send_options` in the `X-Easeye-API` header:
+
+```
+X-Easeye-API: {"send_options":{"track_open":1,"track_click":1}}
+```
+
+---
+
+## Disabling tracking for individual links
+
+When click tracking is enabled globally, every link in the email is rewritten. To **opt a specific link out** of click tracking — for example, an unsubscribe link where you don't want the redirect — add the `ef:disable-tracking` attribute to the anchor tag:
+
+```html
+<!-- This link will NOT be tracked -->
+<a href="https://yourdomain.com/unsubscribe" ef:disable-tracking>Unsubscribe</a>
+
+<!-- This link WILL be tracked -->
+<a href="https://yourdomain.com/offer">View offer</a>
+```
+
+The `ef:disable-tracking` attribute is stripped from the rendered email — recipients will not see it in the source.
+
+<Note>
+  The `ef:disable-tracking` attribute must be lowercase. Click tracking must be enabled via `trackClick: 1` (REST API) or `track_click: 1` in `send_options` (SMTP) for per-link exclusion to have any effect.
+</Note>
+
+---
+
+## Unique message IDs for deduplication
+
+Assign a `uniqueMsgID` to each message to prevent duplicate sends and to correlate tracking events back to a specific message in your own system.
+
+### REST API
+
+```json
+{
+  "uniqueMsgID": "order-confirm-99871"
+}
+```
+
+- Maximum **50 bytes**
+- Alphanumeric characters and dashes only
+
+### SMTP
+
+Use the `X-Easeye-UniqueMsgID` header:
+
+```
+X-Easeye-UniqueMsgID: order-confirm-99871
+```
+
+If EffiLink receives a second send request with the same `uniqueMsgID` within the deduplication window, the duplicate is suppressed — protecting your recipients from receiving the same email twice due to retry logic or application bugs.
+
+---
+
+## Consuming tracking events via webhooks
+
+Open and click events are emitted as webhook payloads that EffiLink delivers to your configured endpoint in real time. This lets you:
+
+- Update a CRM record when a lead opens a proposal email
+- Trigger a follow-up automation when a user clicks a call-to-action
+- Log engagement data to your own analytics store
+
+To set up a webhook listener and view the event schema, see [Webhooks](/docs/webhooks).
+
+---
+
+## Tracking reference summary
+
+| Feature | REST API parameter | SMTP header |
+|---|---|---|
+| Open tracking | `"trackOpen": 1` | `X-Easeye-API: {"send_options":{"track_open":1}}` |
+| Click tracking | `"trackClick": 1` | `X-Easeye-API: {"send_options":{"track_click":1}}` |
+| Disable link tracking | `ef:disable-tracking` on `<a>` tag | `ef:disable-tracking` on `<a>` tag |
+| Unique message ID | `"uniqueMsgID": "your-id"` | `X-Easeye-UniqueMsgID: your-id` |
+| Subscription tracking | — | `X-Easeye-API: {"send_options":{"track_subscription":1}}` |
+| Custom tracking domain | — | `X-Easeye-API: {"send_options":{"custom_domain":"https://..."}}` |

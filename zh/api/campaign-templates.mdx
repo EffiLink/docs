@@ -1,0 +1,212 @@
+---
+title: "营销邮件模板 "
+sidebarTitle: "模板"
+---
+
+## 概述
+
+模板 API 让您创建、获取和删除可复用的 HTML 邮件模板。构建营销发送任务时可以引用模板，确保品牌一致性并减少跨营销活动的内容重复。
+
+---
+
+## 添加模板
+
+`POST /v5/campaign/mail/template/add`
+
+在您的 EffiLink 账户中创建一个新的邮件模板。模板名称必须唯一。
+
+### 请求参数
+
+<ParamField body="templateName" type="string" required>
+  模板的唯一名称。最大 250 字节。用于在创建营销活动时引用该模板。
+</ParamField>
+
+<ParamField body="templateContent" type="string" required>
+  模板的完整 HTML 内容。支持个性化标签(例如 `{{firstName}}`、`{{mainContent}}`)。
+</ParamField>
+
+<ParamField body="templateSubject" type="string" required>
+  此模板的默认主题。创建发送任务时可以覆盖。
+</ParamField>
+
+<ParamField body="editorType" type="string">
+  用于创建模板的编辑器类型。默认为 `DRAG`。
+
+  | 值 | 描述 |
+  | --- | --- |
+  | `DRAG` | 拖放式可视化编辑器(默认) |
+  | `CLASSIC` | HTML 代码编辑器 |
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  人类可读的状态消息。成功时为空字符串。
+</ResponseField>
+
+### 请求示例
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/template/add \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "templateName": "monthly-newsletter-v1",
+    "templateContent": "<h1>您好 {{firstName}}!</h1><p>{{mainContent}}</p>",
+    "templateSubject": "月度简报",
+    "editorType": "CLASSIC"
+  }'
+```
+
+### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+---
+
+## 获取模板
+
+`POST /v5/campaign/mail/template/get`
+
+返回您账户中邮件模板的分页列表。可选择按模板名称过滤。
+
+### 请求参数
+
+<ParamField body="templateName" type="string">
+  按名称包含此值的模板过滤结果。省略以返回所有模板。
+</ParamField>
+
+<ParamField body="pageSize" type="int">
+  每页返回的模板数。默认为 `10`。
+</ParamField>
+
+<ParamField body="pageIndex" type="int">
+  页码(从 1 开始)。默认为 `1`。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  人类可读的状态消息。
+</ResponseField>
+
+<ResponseField name="totalRecords" type="int">
+  符合过滤条件的模板总数。
+</ResponseField>
+
+<ResponseField name="templateList" type="array[object]">
+  模板对象数组。
+
+  <Expandable title="templateList[] 属性">
+    <ResponseField name="templateName" type="string">
+      模板的唯一名称。
+    </ResponseField>
+
+    <ResponseField name="templateContent" type="string">
+      模板的完整 HTML 内容。
+    </ResponseField>
+
+    <ResponseField name="templateSubject" type="string">
+      模板的默认主题。
+    </ResponseField>
+
+    <ResponseField name="createDate" type="string">
+      模板创建的日期和时间(例如 `"2023-10-30 08:15:54.921"`)。
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### 请求示例
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/template/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "templateName": "newsletter",
+    "pageSize": 10,
+    "pageIndex": 1
+  }'
+```
+
+### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "",
+  "templateList": [
+    {
+      "templateName": "monthly-newsletter-v1",
+      "templateContent": "<h1>您好 {{firstName}}!</h1><p>{{mainContent}}</p>",
+      "templateSubject": "月度简报",
+      "createDate": "2025-05-01 08:30:00.000"
+    }
+  ],
+  "totalRecords": 1
+}
+```
+
+---
+
+## 删除模板
+
+`POST /v5/campaign/mail/template/delete`
+
+按名称永久删除邮件模板。
+
+<Warning>
+  此操作不可逆。删除模板不会影响已使用该模板创建的现有营销发送任务,但该模板将不再可用于新的营销活动。
+</Warning>
+
+### 请求参数
+
+<ParamField body="templateName" type="string" required>
+  要删除的模板名称。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  人类可读的状态消息。成功时为空字符串。
+</ResponseField>
+
+### 请求示例
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/template/delete \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "templateName": "monthly-newsletter-v1"
+  }'
+```
+
+### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```

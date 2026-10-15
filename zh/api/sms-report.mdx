@@ -1,0 +1,123 @@
+---
+title: "短信发送统计报告"
+sidebarTitle: "短信统计"
+---
+
+## 概述
+
+短信统计 API 返回您在指定日期范围内每日的短信投递指标。使用这些统计信息监控投递表现、跟踪积分消耗并识别一段时间内的投递问题。
+
+`POST /v5/sms/stats/get`
+
+---
+
+## 请求参数
+
+<ParamField body="startDate" type="string" required>
+  报告期起始日期,格式为 `YYYY-MM-DD`(例如 `2025-05-01`)。包含在内。
+</ParamField>
+
+<ParamField body="endDate" type="string" required>
+  报告期结束日期,格式为 `YYYY-MM-DD`(例如 `2025-05-31`)。包含在内。
+</ParamField>
+
+---
+
+## 响应
+
+<ResponseField name="code" type="int">
+  HTTP 风格的状态代码。成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  人类可读的状态消息。成功时为空字符串。
+</ResponseField>
+
+<ResponseField name="smsStatsList" type="array[object]">
+  每日统计对象数组,请求日期范围内每有活动的一天对应一项。
+
+  <Expandable title="smsStatsList[] 属性">
+    <ResponseField name="statDate" type="string">
+      此统计记录的日期,格式为 `YYYY-MM-DD`。
+    </ResponseField>
+
+    <ResponseField name="sentCount" type="int">
+      此日期派发的短信总数。
+    </ResponseField>
+
+    <ResponseField name="successCount" type="int">
+      成功投递给收件人的消息数。
+    </ResponseField>
+
+    <ResponseField name="failCount" type="int">
+      发送失败的消息数(例如在派发前被平台拒绝)。
+    </ResponseField>
+
+    <ResponseField name="reportFailedCount" type="int">
+      已成功派发但运营商报告投递失败的消息数。这些与 `failCount` 分开统计,因为消息已离开 EffiLink 平台,但未被终端用户接收。
+    </ResponseField>
+
+    <ResponseField name="chargedPoint" type="int">
+      此日期消耗的积分数。积分通常按成功派发的消息计费。
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## 请求示例
+
+```text
+curl --request POST \
+  --url https://api.effilink.co/v5/sms/stats/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "startDate": "2025-05-01",
+    "endDate": "2025-05-31"
+  }'
+```
+
+---
+
+## 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "",
+  "smsStatsList": [
+    {
+      "statDate": "2025-05-01",
+      "sentCount": 850,
+      "successCount": 838,
+      "failCount": 12,
+      "reportFailedCount": 3,
+      "chargedPoint": 838
+    }
+  ]
+}
+```
+
+---
+
+## 指标参考
+
+| 字段 | 描述 |
+| --- | --- |
+| `sentCount` | 此日期尝试发送的所有出站消息 |
+| `successCount` | 平台确认已投递的消息 |
+| `failCount` | 在离开 EffiLink 前被拒绝或失败的消息 |
+| `reportFailedCount` | 已发送但被运营商报告未投递的消息 |
+| `chargedPoint` | 扣除的积分,通常等于 `successCount` |
+
+<Tip>
+  相对于 `successCount`,较高的 `reportFailedCount` 可能表明收件人号码存在问题(例如无效或已携号转网的号码)或运营商路由问题。请检查受影响的号码,如比率持续偏高,请联系 EffiLink 支持。
+</Tip>
+
+### 理解投递失败
+
+此 API 报告两种不同的失败类型:
+
+- **`failCount`** — 消息在 EffiLink 平台层面被拒绝,从未派发。这些**不**收费。
+- **`reportFailedCount`** — 消息已派发并离开 EffiLink 平台,但运营商的投递回执显示失败。这些可能仍会消耗积分,`chargedPoint` 字段反映实际计费。

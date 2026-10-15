@@ -1,0 +1,211 @@
+---
+title: "Batch Transactional Email Send — Up to 100 Versions"
+sidebarTitle: "Batch Send"
+description: "Send up to 100 individually personalized transactional emails in one API request, each with its own recipients, content, and parameters."
+---
+
+## Overview
+
+Send up to **100 personalized email versions** in a single API call using the `messageVersions` array. Each version can target up to 20 recipients and independently override the top-level subject, content, template, and personalization parameters. This is the most efficient way to dispatch a batch of individually tailored transactional messages without making one request per recipient.
+
+This uses the same endpoint as [single transactional sends](/api/transactional-send), with the addition of the `messageVersions` field.
+
+**Base URL:** `https://api.effilink.co`
+
+**Endpoint:** `POST /v5/transactional/mail/sends_customised`
+
+**Authentication:** `ApiKey` header
+
+---
+
+## Content Priority Order
+
+When multiple content sources are provided, the following priority applies (highest to lowest):
+
+1. `messageVersions[].templateName`
+2. `messageVersions[].content`
+3. Top-level `templateName`
+4. Top-level `content`
+
+---
+
+## Request Parameters
+
+All [single send parameters](/api/transactional-send#request-parameters) are supported at the top level and serve as defaults across all versions. The `messageVersions` array is required for batch sends.
+
+<ParamField body="subject" type="string">
+  Default email subject line, used for any version that does not define its own `subject`.
+</ParamField>
+
+<ParamField body="content" type="string">
+  Default HTML email body content. Used for versions that do not specify `content` or `templateName`. Required if no top-level `templateName` is set and no version provides its own content source.
+</ParamField>
+
+<ParamField body="templateName" type="string">
+  Default saved template name. Used for versions that do not specify their own `templateName` or `content`.
+</ParamField>
+
+<ParamField body="params" type="object">
+  Default key-value personalization tags applied to all versions. Version-level `params` override these values when the same key is present.
+
+  ```json
+  { "brand": "Your Store", "supportEmail": "help@yourdomain.com" }
+  ```
+</ParamField>
+
+<ParamField body="senderMail" type="string" required>
+  Verified sender email address. Applies to all versions.
+</ParamField>
+
+<ParamField body="senderName" type="string">
+  Sender display name. Maximum **200 characters**. Applies to all versions.
+</ParamField>
+
+<ParamField body="replyTo" type="string">
+  Reply-to email address. Applies to all versions.
+</ParamField>
+
+<ParamField body="sendDate" type="string">
+  Scheduled send time in ISO 8601 UTC format (e.g. `2024-03-10T12:00:00Z`). Omit to send immediately.
+</ParamField>
+
+<ParamField body="trackOpen" type="integer">
+  Set to `1` to enable open tracking across all versions.
+</ParamField>
+
+<ParamField body="trackClick" type="integer">
+  Set to `1` to enable click tracking across all versions.
+</ParamField>
+
+<ParamField body="category" type="string">
+  Email category label. Maximum **100 bytes**, alphanumeric only.
+</ParamField>
+
+<ParamField body="campaign" type="string">
+  Campaign name for analytics grouping. Maximum **100 bytes**, alphanumeric only.
+</ParamField>
+
+<ParamField body="uniqueMsgID" type="string">
+  A unique message identifier for tracking and deduplication purposes. Maximum **50 bytes**.
+</ParamField>
+
+<ParamField body="attachment" type="object">
+  A single file to attach to all emails in the batch. Only one attachment is supported per request.
+
+  <Expandable title="attachment fields">
+    <ParamField body="fileName" type="string" required>
+      The filename of the attachment, including its extension (e.g. `invoice.pdf`).
+    </ParamField>
+
+    <ParamField body="fileData" type="string" required>
+      Base64-encoded content of the file to attach.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  Set to `true` to validate and process the request without delivering any emails.
+</ParamField>
+
+<ParamField body="messageVersions" type="array[object]" required>
+  Array of up to **100** individual email versions. Each version inherits top-level values and may override them selectively.
+
+  <Expandable title="messageVersions[] fields">
+    <ParamField body="to" type="array[object]" required>
+      List of primary recipients for this version. Maximum **20** recipients.
+
+      Each item: `{ "email": "string (required)", "name": "string (optional)" }`
+    </ParamField>
+
+    <ParamField body="cc" type="array[object]">
+      List of CC recipients for this version. Maximum **20** recipients.
+
+      Each item: `{ "email": "string (required)", "name": "string (optional)" }`
+    </ParamField>
+
+    <ParamField body="bcc" type="array[object]">
+      List of BCC recipients for this version. Maximum **20** recipients.
+
+      Each item: `{ "email": "string (required)", "name": "string (optional)" }`
+    </ParamField>
+
+    <ParamField body="subject" type="string">
+      Version-level subject line. Overrides the top-level `subject` for this version only.
+    </ParamField>
+
+    <ParamField body="content" type="string">
+      Version-level HTML email body. Overrides the top-level `content` for this version (unless a version-level `templateName` is also set).
+    </ParamField>
+
+    <ParamField body="templateName" type="string">
+      Version-level template name. Takes highest priority — overrides both version-level `content` and all top-level content sources.
+    </ParamField>
+
+    <ParamField body="params" type="object">
+      Version-level personalization tags. These override any matching keys from the top-level `params` for this version only.
+
+      ```json
+      { "name": "Alice", "orderId": "ORD-001", "status": "Shipped" }
+      ```
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+---
+
+## Response Fields
+
+<ResponseField name="code" type="integer">
+  `200` on success. See the [error codes table](#error-codes) for failure values.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string (`""`) on success. Contains an error description on failure.
+</ResponseField>
+
+---
+
+## Error Codes
+
+| Code | Cause |
+| --- | --- |
+| `400` | Missing required parameter; `messageVersions` exceeds 100 entries; a version's `to`, `cc`, or `bcc` array exceeds 20 recipients; invalid `sendDate` format; `category`, `campaign`, or `uniqueMsgID` too long; invalid recipient address; sender name too long; invalid reply-to address; missing content |
+| `403` | Sender address not registered; template not found; insufficient account credits |
+
+---
+
+## Example
+
+### Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/transactional/mail/sends_customised \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "subject": "Order update for {{orderId}}",
+    "content": "<p>Hello {{name}},</p><p>Your order {{orderId}} status: {{status}}</p>",
+    "senderMail": "noreply@yourdomain.com",
+    "trackOpen": 1,
+    "messageVersions": [
+      {
+        "to": [{"email": "alice@example.com", "name": "Alice"}],
+        "params": {"name": "Alice", "orderId": "ORD-001", "status": "Shipped"}
+      },
+      {
+        "to": [{"email": "bob@example.com", "name": "Bob"}],
+        "params": {"name": "Bob", "orderId": "ORD-002", "status": "Processing"}
+      }
+    ]
+  }'
+```
+
+### Response
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```

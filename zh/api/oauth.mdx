@@ -1,0 +1,134 @@
+---
+title: "OAuth 2.0 端点 "
+sidebarTitle: "OAuth 端点"
+description: "在 EffiLink 中实现 OAuth 2.0 授权码流程。获取短期或永久访问令牌,通过 OAuth 请求头认证 API 请求。"
+---
+
+EffiLink 支持 **OAuth 2.0 授权码流程**作为 `ApiKey` 认证的替代方案。使用以下两个端点获取访问令牌,该令牌可通过 `OAuth` 请求头传递到任何 API 请求。
+
+---
+
+## 授权 URL
+
+`GET /v5/auth/oauth/authorize`
+
+将用户重定向到 EffiLink 授权同意页面。用户批准访问后,EffiLink 会带着短期授权码重定向回您的 `redirect_uri`。
+
+### 查询参数
+
+<ParamField query="client_id" type="string" required>
+  在 EffiLink 平台中生成的 OAuth 应用 ID。
+</ParamField>
+
+<ParamField query="response_type" type="string" required>
+  必须为 `code`。这是唯一支持的值。
+</ParamField>
+
+<ParamField query="redirect_uri" type="string" required>
+  URL 编码的回调 URL,用户批准后 EffiLink 会将授权码发送到此处。必须与您 OAuth 应用注册的重定向 URI 完全一致。
+</ParamField>
+
+<ParamField query="scope" type="string" required>
+  必须为 `All`。这是唯一支持的作用域值。
+</ParamField>
+
+### 响应
+
+此端点**不返回 JSON**。它会发出 HTTP 重定向到 EffiLink 授权同意页面。
+
+用户批准授权请求后,EffiLink 将浏览器重定向到:
+
+```text
+{redirect_uri}?code=AUTHORIZATION_CODE
+```
+
+<Warning>
+  授权码有效期为 **5 分钟**,只能使用一次。请立即使用[获取访问令牌](#get-access-token)端点将其兑换为访问令牌。
+</Warning>
+
+```bash
+curl --request GET \
+  --url 'https://api.effilink.co/v5/auth/oauth/authorize?client_id=1751651162214168&response_type=code&redirect_uri=https%3A%2F%2Fyourapp.com%2Fcallback&scope=All'
+```
+
+---
+
+## 获取访问令牌
+
+`GET /v5/auth/oauth/token`
+
+用有效的授权码兑换访问令牌。此令牌用于后续 API 请求的 `OAuth` 请求头。
+
+### 查询参数
+
+<ParamField query="grant_type" type="string" required>
+  必须为 `authorization_code`。这是唯一支持的值。
+</ParamField>
+
+<ParamField query="client_id" type="string" required>
+  在 EffiLink 平台中生成的 OAuth 应用 ID。
+</ParamField>
+
+<ParamField query="client_secret" type="string" required>
+  在 EffiLink 平台中生成的 OAuth 应用密钥。请对此值保密。
+</ParamField>
+
+<ParamField query="code" type="string" required>
+  在[授权 URL](#authorization-url) 步骤的 `redirect_uri` 回调中收到的授权码。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="integer">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为 `null`;失败时为错误描述。
+</ResponseField>
+
+<ResponseField name="accessToken" type="string">
+  API 请求 `OAuth` 请求头中包含的访问令牌。最大长度为 512 字节。
+</ResponseField>
+
+<ResponseField name="expiresIn" type="integer">
+  令牌剩余有效期(秒)。`-1` 表示令牌为永久有效且不会过期。
+
+  当剩余时间少于 **5 分钟**(`expiresIn < 300`)时可以生成新令牌。在短暂的过渡窗口期内,新旧令牌同时有效,防止请求中断。
+
+  <Note>
+    每个 API 密钥在其有效期内仅允许**一个活动令牌**。
+  </Note>
+</ResponseField>
+
+```bash
+curl --request GET \
+  --url 'https://api.effilink.co/v5/auth/oauth/token?grant_type=authorization_code&client_id=1751651162214168&client_secret=YOUR_CLIENT_SECRET&code=AUTHORIZATION_CODE'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": null,
+  "accessToken": "5cb089d6eafd49caa68c41b9be9af6f6",
+  "expiresIn": -1
+}
+```
+
+---
+
+## 使用访问令牌
+
+在任何 EffiLink API 请求的 `OAuth` 请求头中传入访问令牌:
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/transactional/mail/sends_customised \
+  --header 'Content-Type: application/json' \
+  --header 'OAuth: 5cb089d6eafd49caa68c41b9be9af6f6' \
+  --data '{...}'
+```
+
+<Tip>
+  如果您不想实现 OAuth 流程,可以直接使用 `ApiKey` 请求头。所有 EffiLink API 端点都接受这两种认证方式。
+</Tip>

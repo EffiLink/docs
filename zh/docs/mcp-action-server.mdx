@@ -1,0 +1,113 @@
+---
+title: "MCP 发送服务"
+sidebarTitle: "MCP 发送服务"
+description: "一个自托管的 MCP 服务，让 AI 客户端可以代表你调用 EffiLink 事务性消息 API。"
+---
+
+<Info>
+  这个**服务器**由**你自己托管**，并且可以使用你自己的 API 密钥执行真实的身份验证操作 —— 包括发送真实消息。
+</Info>
+
+## 它能做什么
+
+该服务器提供一个工具：**`call_api`**，它让已连接的 AI 客户端可以直接调用 [事务性消息 API](/api-reference) —— 例如发送事务性邮件、发送批量消息，或获取投递报告 —— 而无需你手动编写请求。
+
+<Warning>
+  由于该服务器可以对你的账户执行真实且可能产生费用的操作，请仅在你确实需要时安装它，并像对待任何后端服务中的密钥一样谨慎地保管你的 API 密钥。绝不要将正在运行的实例的访问权共享给你不信任的人。
+</Warning>
+
+## 工作原理
+
+该服务作为你 MCP 客户端的子进程在本地运行（stdio 传输），而非作为公开端点。你的 API 密钥保存在你本机的环境变量中 —— AI 模型本身从不会看到或处理该密钥。当模型调用 `call_api` 时，服务会在服务端自己附上密钥，并将请求转发到 `https://api.effilink.co`。
+
+出于安全考虑，该服务器仅允许访问 `/v5/transactional/` 下的路径。对其他路径的请求会在发起网络请求前就被拒绝。
+
+## 安装设置
+
+<Steps>
+  <Step title="获取服务代码">
+    下载 `effilink-mcp-server` 项目（`index.js`、`package.json`、`README.md`）并安装依赖：
+
+    ```bash
+    npm install
+    ```
+  </Step>
+  <Step title="设置你的 API 密钥">
+    从你的[账户设置](https://app.effilink.co/setting/apiKey)获取一个 API 密钥，然后将其导出为环境变量：
+
+    ```bash
+    export EFFILINK_API_KEY="your_api_key_here"
+    ```
+  </Step>
+  <Step title="添加到你的 MCP 客户端">
+    将客户端指向服务器的入口文件。对于 Claude Desktop 或 Cursor，将以下内容添加到你的 MCP 配置中：
+
+    ```json
+    {
+      "mcpServers": {
+        "effilink": {
+          "command": "node",
+          "args": ["/absolute/path/to/effilink-mcp-server/index.js"],
+          "env": {
+            "EFFILINK_API_KEY": "your_api_key_here"
+          }
+        }
+      }
+    }
+    ```
+  </Step>
+  <Step title="在沙盒模式中测试">
+    先使用 `sandboxMode: true` 尝试一次调用（参见下面的示例），确认一切配置正确后，再发送真实消息。
+  </Step>
+</Steps>
+
+## `call_api` 工具
+
+| 参数 | 类型 | 是否必需 | 说明 |
+| --- | --- | --- | --- |
+| `path` | string | 是 | 相对于 `https://api.effilink.co` 的 API 路径，必须以 `/v5/transactional/` 开头 |
+| `method` | `GET` \| `POST` \| `PUT` \| `DELETE` | 否（默认 `POST`） | HTTP 请求方法 |
+| `body` | object | 否 | JSON 请求体 |
+| `query` | object | 否 | 查询字符串参数 |
+
+### 示例：发送事务性邮件
+
+```json
+call_api({
+  "path": "/v5/transactional/mail/sends_customised",
+  "method": "POST",
+  "body": {
+    "subject": "Your order has shipped",
+    "content": "<p>Hello {{name}}, your order {{orderId}} has shipped!</p>",
+    "params": { "name": "Jane", "orderId": "ORD-5678" },
+    "senderMail": "noreply@yourdomain.com",
+    "senderName": "Your Store",
+    "to": { "email": "jane@example.com", "name": "Jane Smith" },
+    "trackOpen": 1,
+    "trackClick": 1,
+    "sandboxMode": true
+  }
+})
+```
+
+当 `sandboxMode: true` 时，请求会被完整验证，但不会实际发送邮件 —— 详见 [Sandbox Mode](/docs/sandbox-mode)（英文页面）。确认无误后去掉该参数即可正式发送。
+
+## 示例提问
+
+连接后，你可以向 AI 客户端提出类似这样的请求：
+
+- "向 [jane@example.com](mailto:jane@example.com) 发送一封使用我们重置模板的密码重置邮件。"
+- "向这个客户名单批量发送订单确认邮件。"（并在对话中提供具体名单）
+- "查询消息 ID abc123 的投递状态。"
+
+客户端会根据 [API 参考文档](/api-reference)，使用正确的路径、方法和请求体调用 `call_api`。
+
+## 限制
+
+- **仅限于事务性消息。** 默认仅允许 `/v5/transactional/*` 路径。除非你在服务器代码中扩展 `ALLOWED_PREFIX`，否则无法访问营销活动、短信和联系人接口。
+- **默认仅限本地使用。** 该服务器通过 stdio 在你自己的机器上运行 —— 除非你将其改适为通过 HTTP 运行并添加自己的身份验证层，否则无法在团队中共享。
+- **无额外的限流机制。** 除了 EffiLink API 自身的限制外，服务器不内置额外的限流。参见 [Rate Limits](/docs/rate-limits)（英文页面）。
+
+<Card title="寻找只读文档服务器？" icon="magnifying-glass" href="/zh/docs/mcp-server">
+  查看 MCP 服务器页面，了解让 AI 工具搜索并引用 EffiLink 文档的服务器。
+</Card>

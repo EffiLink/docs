@@ -1,0 +1,223 @@
+---
+title: "Campaign Email Templates — Add, Retrieve, and Delete"
+sidebarTitle: "Templates"
+description: "Store and manage reusable HTML email templates in EffiLink to streamline campaign creation, ensure consistent branding, and reduce duplication."
+---
+
+## Overview
+
+The Templates API lets you create, retrieve, and delete reusable HTML email templates. Templates can be referenced when building campaign send tasks, ensuring consistent branding and reducing content duplication across campaigns.
+
+**Base URL:** `https://api.effilink.co`
+
+All endpoints require authentication via an `ApiKey` or `OAuth` header.
+
+---
+
+## Add Template
+
+<ParamField path="POST" type="string">
+  `/v5/campaign/mail/template/add`
+</ParamField>
+
+Creates a new email template in your EffiLink account. Template names must be unique.
+
+### Request Parameters
+
+<ParamField body="templateName" type="string" required>
+  A unique name for the template. Maximum 250 bytes. Used to reference the template when creating campaigns.
+</ParamField>
+
+<ParamField body="templateContent" type="string" required>
+  The full HTML content of the template. Supports personalization tags (e.g., `{{firstName}}`, `{{mainContent}}`).
+</ParamField>
+
+<ParamField body="templateSubject" type="string" required>
+  The default subject line for this template. Can be overridden when creating a send task.
+</ParamField>
+
+<ParamField body="editorType" type="string">
+  The editor type used to create the template. Defaults to `DRAG`.
+
+  | Value | Description |
+  | --- | --- |
+  | `DRAG` | Drag-and-drop visual editor (default) |
+  | `CLASSIC` | HTML code editor |
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable status message. Empty string on success.
+</ResponseField>
+
+### Example Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/template/add \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "templateName": "monthly-newsletter-v1",
+    "templateContent": "<h1>Hello {{firstName}}!</h1><p>{{mainContent}}</p>",
+    "templateSubject": "Monthly Newsletter",
+    "editorType": "CLASSIC"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+---
+
+## Get Templates
+
+<ParamField path="POST" type="string">
+  `/v5/campaign/mail/template/get`
+</ParamField>
+
+Returns a paginated list of email templates in your account. Optionally filter by template name.
+
+### Request Parameters
+
+<ParamField body="templateName" type="string">
+  Filter results to templates whose name contains this value. Omit to return all templates.
+</ParamField>
+
+<ParamField body="pageSize" type="int">
+  Number of templates to return per page. Defaults to `10`.
+</ParamField>
+
+<ParamField body="pageIndex" type="int">
+  Page number (1-based). Defaults to `1`.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable status message.
+</ResponseField>
+
+<ResponseField name="totalRecords" type="int">
+  Total number of templates matching the filter criteria.
+</ResponseField>
+
+<ResponseField name="templateList" type="array[object]">
+  An array of template objects.
+
+  <Expandable title="templateList[] properties">
+    <ResponseField name="templateName" type="string">
+      The unique name of the template.
+    </ResponseField>
+
+    <ResponseField name="templateContent" type="string">
+      The full HTML content of the template.
+    </ResponseField>
+
+    <ResponseField name="templateSubject" type="string">
+      The default subject line of the template.
+    </ResponseField>
+
+    <ResponseField name="createDate" type="string">
+      The date and time the template was created (e.g., `"2023-10-30 08:15:54.921"`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/template/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "templateName": "newsletter",
+    "pageSize": 10,
+    "pageIndex": 1
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "code": 200,
+  "message": "",
+  "templateList": [
+    {
+      "templateName": "monthly-newsletter-v1",
+      "templateContent": "<h1>Hello {{firstName}}!</h1><p>{{mainContent}}</p>",
+      "templateSubject": "Monthly Newsletter",
+      "createDate": "2025-05-01 08:30:00.000"
+    }
+  ],
+  "totalRecords": 1
+}
+```
+
+---
+
+## Delete Template
+
+<ParamField path="POST" type="string">
+  `/v5/campaign/mail/template/delete`
+</ParamField>
+
+Permanently deletes an email template by name.
+
+<Warning>
+  This action is irreversible. Deleting a template does not affect existing campaign send tasks that were already created using it, but the template will no longer be available for new campaigns.
+</Warning>
+
+### Request Parameters
+
+<ParamField body="templateName" type="string" required>
+  The name of the template to delete.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable status message. Empty string on success.
+</ResponseField>
+
+### Example Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/template/delete \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "templateName": "monthly-newsletter-v1"
+  }'
+```
+
+### Example Response
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```

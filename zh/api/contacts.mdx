@@ -1,0 +1,322 @@
+---
+title: "联系人API"
+sidebarTitle: "联系人"
+---
+
+## 概述
+
+通过 EffiLink 联系人 API 创建、更新、批量导入、获取与删除联系人。支持名单分配与沙盒测试。
+
+---
+
+## 添加或更新单个联系人
+
+`POST /v5/contacts/upsert`
+
+创建新联系人或更新现有联系人。必须至少提供 `email` 或 `phoneNumber` 之一。
+
+### 请求体
+
+<ParamField body="name" type="string">
+  联系人的显示名称。若省略,默认为邮箱地址。
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  联系人的邮箱地址。如果未提供 `phoneNumber`,则必填。
+</ParamField>
+
+<ParamField body="phoneNumber" type="string" required>
+  联系人的电话号码。如果未提供 `email`,则必填。
+</ParamField>
+
+<ParamField body="listName" type="string">
+  更新插入后将该联系人添加到的现有联系人组名称。
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  为 `true` 时,操作被模拟且不持久化任何数据。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串;失败时为错误描述。
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/contacts/upsert \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "phoneNumber": "18800008888",
+    "listName": "Newsletter Subscribers"
+  }'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+---
+
+## 批量导入联系人
+
+`POST /v5/contacts/imports`
+
+使用二维数组格式配合列映射定义,在一次请求中导入多个联系人。
+
+### 请求体
+
+<ParamField body="contactData" type="array[array]" required>
+  联系人值的二维数组。每个内部数组代表一条联系人行;列顺序必须与 `contactDataMapping` 匹配。
+</ParamField>
+
+<ParamField body="contactDataMapping" type="array[object]" required>
+  描述每列映射到的属性。
+
+  <Expandable title="contactDataMapping 对象">
+    <ParamField body="columnNum" type="int" required>
+      `contactData` 中列的从零开始的索引。
+    </ParamField>
+
+    <ParamField body="propertyName" type="string" required>
+      列的属性标识符(例如 `email`、`name`)。请参见联系人属性参考了解有效值。
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="updateMode" type="int" required>
+  控制现有联系人的处理方式:
+
+  - `1` — 创建新联系人**并**更新现有联系人。
+  - `2` — 仅创建新联系人;跳过现有联系人。
+  - `3` — 仅更新现有联系人;跳过新联系人。
+</ParamField>
+
+<ParamField body="listName" type="string">
+  将所有导入的联系人添加到的联系人组名称。
+</ParamField>
+
+<ParamField body="listDescription" type="string">
+  通过 `listName` 创建新联系人组时应用的描述。
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  为 `true` 时,操作被模拟且不持久化任何数据。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串;失败时为错误描述。
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/contacts/imports \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "contactData": [
+      ["alice@example.com", "Alice Chen"],
+      ["bob@example.com", "Bob Wang"]
+    ],
+    "contactDataMapping": [
+      {"columnNum": 0, "propertyName": "email"},
+      {"columnNum": 1, "propertyName": "name"}
+    ],
+    "updateMode": 1,
+    "listName": "Q2 Campaign"
+  }'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+---
+
+## 获取联系人
+
+`POST /v5/contacts/get`
+
+按邮箱地址获取单个联系人记录。
+
+### 请求体
+
+<ParamField body="email" type="string" required>
+  要获取的联系人的邮箱地址。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串;失败时为错误描述。
+</ResponseField>
+
+<ResponseField name="contact" type="object">
+  匹配的联系人记录。
+
+  <Expandable title="contact 对象">
+    <ResponseField name="id" type="string">
+      联系人的唯一标识符。
+    </ResponseField>
+
+    <ResponseField name="name" type="string">
+      联系人的显示名称。
+    </ResponseField>
+
+    <ResponseField name="email" type="string">
+      联系人的邮箱地址。
+    </ResponseField>
+
+    <ResponseField name="phoneNumber" type="string">
+      联系人的电话号码。
+    </ResponseField>
+
+    <ResponseField name="properties" type="object">
+      自定义和系统属性的键值映射(例如 `company`、`email_bounced_flag`、`email_open_count`)。所有值均为字符串。
+    </ResponseField>
+
+    <ResponseField name="createDate" type="string">
+      联系人创建时间的 ISO 8601 时间戳。
+    </ResponseField>
+
+    <ResponseField name="modifyTime" type="string">
+      最近一次更新的 ISO 8601 时间戳。
+    </ResponseField>
+
+    <ResponseField name="createUserId" type="int">
+      创建联系人的用户的 ID。
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/contacts/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{"email": "alice@example.com"}'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": "",
+  "contact": {
+    "id": "653f663a17e04f6e5a263de6",
+    "name": "Alice Chen",
+    "email": "alice@example.com",
+    "phoneNumber": "18800008888",
+    "properties": {
+      "company": "Acme Inc",
+      "email_bounced_flag": "0",
+      "email_open_count": "5"
+    },
+    "createDate": "2024-01-15T08:00:00.000Z",
+    "modifyTime": "2025-04-21T05:53:01.089Z",
+    "createUserId": 42
+  }
+}
+```
+
+---
+
+## 获取组中的联系人
+
+`POST /v5/contacts/list/get`
+
+返回属于指定联系人组的分页联系人列表。
+
+### 请求体
+
+<ParamField body="listName" type="string" required>
+  要从中获取联系人的联系人组名称。
+</ParamField>
+
+<ParamField body="pageSize" type="int">
+  每页返回的联系人数。默认为 `200`;最大值为 `1000`。
+</ParamField>
+
+<ParamField body="pageIndex" type="int">
+  从 1 开始的页码。默认为 `1`。
+</ParamField>
+
+<ParamField body="teamName" type="string">
+  查询属于其他团队的组。需要特殊的跨团队权限。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串;失败时为错误描述。
+</ResponseField>
+
+<ResponseField name="contactList" type="array[object]">
+  联系人记录数组。每个对象包含与[获取联系人](#get-contact)响应相同的字段:`id`、`name`、`email`、`phoneNumber`、`properties`、`createDate`、`modifyTime` 和 `createUserId`。
+</ResponseField>
+
+<ResponseField name="totalRecords" type="int">
+  跨所有页面组中的联系人总数。
+</ResponseField>
+
+---
+
+## 删除联系人
+
+`POST /v5/contacts/delete`
+
+按邮箱地址永久删除联系人。
+
+### 请求体
+
+<ParamField body="email" type="string" required>
+  要删除的联系人的邮箱地址。
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  为 `true` 时,操作被模拟且不删除任何数据。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串;失败时为错误描述。
+</ResponseField>
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```

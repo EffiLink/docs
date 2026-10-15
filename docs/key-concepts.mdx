@@ -1,0 +1,72 @@
+---
+title: "EffiLink Key Concepts: Senders, Contacts, and Templates"
+sidebarTitle: "Key Concepts"
+description: "Understand the core building blocks of EffiLink: the API endpoint, authentication headers, verified senders, contact lists, and campaign tasks."
+---
+
+Before diving into specific features, it helps to understand the key concepts that underpin the EffiLink platform. This page explains the essential building blocks you'll encounter in every integration.
+
+## API endpoint
+
+All EffiLink API requests go to:
+
+```
+https://api.effilink.co
+```
+
+Every request must use HTTPS and include `Content-Type: application/json` plus an authentication header. See [Authentication](/docs/authentication) for details.
+
+## Verified senders
+
+A **verified sender** is an email address or domain that you've registered with EffiLink and proven ownership of. You cannot send email from an unregistered address. Verification involves setting DNS records (SPF, DKIM, DMARC) on your domain.
+
+Three email sender types by purpose.:
+- **OTP （type 1):** — Login verification and account activation.
+- **Transactional (type 2)** — Automated, event-triggered system emails.
+- **Marketing (type 3)** — Marketing campaigns and newsletters.
+
+## Contacts and contact lists
+
+A **contact** is an individual recipient identified by email address or phone number. Contacts can carry custom properties (e.g. name, company, birthday).
+
+A **contact list** (also called a list or group) is a named collection of contacts. When sending a marketing campaign, you target one or more contact lists. Lists can also be used as exclusion groups (repel lists) to suppress unwanted recipients.
+
+## Campaign tasks (sends)
+
+A **campaign task** (or send task) is the unit of work for a marketing email or SMS campaign. When you create a campaign task, you specify:
+- The sender address and name
+- The email subject and content (or template)
+- The target contact lists
+- The scheduled send time (or immediate)
+
+Campaign tasks can be queried, cancelled (if scheduled), and deleted.
+
+## Templates
+
+A **template** is a reusable HTML email design stored in your EffiLink account. Templates can contain personalization tags in the format `{{tagName}}` that are replaced with actual values at send time. You can manage templates via the API or the EffiLink dashboard.
+
+## Personalization tags
+
+Personalization tags let you inject dynamic content into email subjects and bodies. Use the format `{{tagName}}` in your content or template, then supply values in the `params` field of your API request.
+
+```json
+{
+  "content": "<p>Hello, {{firstName}}! Your order {{orderId}} has shipped.</p>",
+  "params": {
+    "firstName": "Jane",
+    "orderId": "ORD-1234"
+  }
+}
+```
+
+## Sandbox mode
+
+**Sandbox mode** lets you test API calls without sending real emails or SMS, consuming credits, or modifying live data. Pass `"sandboxMode": true` in your request body. The API validates your request and returns the same response structure, but no message is actually sent. See [Sandbox Mode](/docs/sandbox-mode) for more.
+
+## Webhooks
+
+**Webhooks** are HTTP callbacks that EffiLink sends to your endpoint when email events occur — such as delivery, opens, clicks, bounces, and unsubscribes. You configure webhook URLs in the EffiLink dashboard or via the Webhook Config API.
+
+## API versioning
+
+These docs cover **API v5**, the current and recommended version. The base path for all v5 endpoints is `/v5/`. If you have existing integrations using an older version, migrate to v5 for the latest features and best performance.

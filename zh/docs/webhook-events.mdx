@@ -1,0 +1,259 @@
+---
+title: "Webhook 事件"
+sidebarTitle: "Webhook 事件"
+description: "EffiLink 全部 8 种 Webhook 事件类型（Dropped、Bounced、Delivered、Opened、Clicked、Unsubscribed、SpamReport 和 TaskStatus）的完整字段参考。"
+---
+
+本页面记录 EffiLink 可以向 Webhook 端点投递的每种事件类型，包括触发时机的描述以及推送中的完整字段表。有关配置说明和一般行为，请参见[Webhook 配置](/zh/docs/webhooks)。
+
+---
+
+## 批量投递
+
+EffiLink 以批量方式投递 Webhook 事件。每次 HTTP POST 到您的端点都包含事件对象的 JSON **数组**，单次推送最多 **1,000 个事件**。同一次推送可能包含不同类型的事件，因此处理器应根据数组中每个对象的 `EventCode` 字段进行分支处理。
+
+```json
+[
+  { "EventCode": "Delivered", ... },
+  { "EventCode": "Opened", ... },
+  { "EventCode": "Clicked", ... }
+]
+```
+
+---
+
+## 通用字段
+
+以下字段在大多数或全部事件类型中都会出现。个别事件可能包含额外字段，见下方各自的章节。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `EventCode` | string | 标识事件类型（例如 `"Delivered"`、`"Opened"`）。 |
+| `Email` | string | 收件人邮箱地址。 |
+| `EventType` | string | 活动分类（例如 `"Transactional"`、`"Marketing"`）。 |
+| `SentMailListName` | string | 邮件发送的目标联系人列表名。 |
+| `TriggeredDateTimeV2` | datetime | 事件发生时的 UTC 时间戳。 |
+| `UniqueMsgID` | string | 单条消息的唯一标识。与 `EventCode` 组合可作为幂等处理的复合键。 |
+| `Guid` | string | 任务标识。 |
+| `MailName` | string | 邮件任务的名称。 |
+
+---
+
+## 事件类型
+
+<AccordionGroup>
+  <Accordion title="Dropped：因过滤器而未发送">
+    **EventCode：** `Dropped`
+
+    当 EffiLink 因收件人地址被抑制过滤器标记而阻止邮件发送时触发。该邮件不会提交给邮件服务器。
+
+    **触发时机：** 发送前，联系人记录上的 `properties.email_bounced_flag` 非零时。
+
+    | 字段 | 类型 | 说明 |
+    | --- | --- | --- |
+    | `EventCode` | string | `"Dropped"` |
+    | `Email` | string | 收件人邮箱地址。 |
+    | `EventType` | string | 活动类型。 |
+    | `Reason` | int | 抑制原因码，见下表。 |
+    | `SenderEmail` | string | 本次活动使用的发件地址。 |
+    | `SentMailListName` | string | 目标联系人列表名。 |
+    | `TriggeredDateTimeV2` | datetime | 丢弃事件的 UTC 时间戳。 |
+    | `UniqueMsgID` | string | 消息唯一标识。 |
+    | `Guid` | string | 活动标识。 |
+    | `MailName` | string | 活动名称。 |
+
+    **原因码**
+
+    | 值 | 含义 |
+    | --- | --- |
+    | `110` | 硬退信过滤：该地址此前发生硬退信。 |
+    | `111` | 退订过滤：联系人已退订。 |
+    | `112` | 投诉过滤：联系人此前举报为垃圾邮件。 |
+    | `210` | 其他过滤（管理员或系统抑制）。 |
+  </Accordion>
+
+  <Accordion title="Bounced：投递失败">
+    **EventCode：** `Bounced`
+
+    当邮件已提交至收件方邮件服务器但投递失败时触发。EffiLink 区分永久失败（硬退信）与临时失败（软退信）。
+
+    **触发时机：** 提交至收件方邮件服务器后，收到失败响应时。
+
+    | 字段 | 类型 | 说明 |
+    | --- | --- | --- |
+    | `EventCode` | string | `"Bounced"` |
+    | `Email` | string | 收件人邮箱地址。 |
+    | `EventType` | string | 活动类型。 |
+    | `Reason` | int | 退信类型码，见下表。 |
+    | `SenderEmail` | string | 发件地址。 |
+    | `SentMailListName` | string | 目标联系人列表名。 |
+    | `SubmitDateTimeV2` | datetime | 邮件提交时的 UTC 时间戳。 |
+    | `TriggeredDateTimeV2` | datetime | 记录退信时的 UTC 时间戳。 |
+    | `UniqueMsgID` | string | 消息唯一标识。 |
+    | `FailedCause` | string | 来自收件方服务器的退信诊断信息，采用 Base64 编码。 |
+    | `Guid` | string | 活动标识。 |
+    | `MailName` | string | 活动名称。 |
+
+    **原因码**
+
+    | 值 | 含义 |
+    | --- | --- |
+    | `100` | 硬退信：永久投递失败（例如地址不存在）。联系人的 `email_bounced_flag` 会被设为 `1`。 |
+    | `101` | 软退信：临时投递失败（例如邮箱已满、服务器不可用）。 |
+
+    <Tip>
+      对 `FailedCause` 进行 Base64 解码可读取原始 SMTP 错误消息，有助于诊断异常退信模式。
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Delivered：邮件已被收件方服务器接受">
+    **EventCode：** `Delivered`
+
+    当收件方邮件服务器接受邮件时触发。注意“Delivered”意味着服务器已接受消息，并不保证邮件到达收件箱（仍可能被收件人邮件客户端过滤到垃圾箱）。
+
+    **触发时机：** 收到收件方邮件服务器返回的 `250 OK`（或等效）成功响应时。
+
+    | 字段 | 类型 | 说明 |
+    | --- | --- | --- |
+    | `EventCode` | string | `"Delivered"` |
+    | `Email` | string | 收件人邮箱地址。 |
+    | `EventType` | string | 活动类型。 |
+    | `SenderEmail` | string | 发件地址。 |
+    | `SentMailListName` | string | 目标联系人列表名。 |
+    | `SubmitDateTimeV2` | datetime | 邮件提交时的 UTC 时间戳。 |
+    | `TriggeredDateTimeV2` | datetime | 确认投递的 UTC 时间戳。 |
+    | `UniqueMsgID` | string | 消息唯一标识。 |
+    | `ReceiveServer` | string | 接受消息的收件方邮件服务器主机名。 |
+    | `Guid` | string | 活动标识。 |
+    | `MailName` | string | 活动名称。 |
+  </Accordion>
+
+  <Accordion title="Opened：收件人打开了邮件">
+    **EventCode：** `Opened`
+
+    每次收件人打开邮件时触发。同一收件人多次打开会生成多次 `Opened` 事件。打开跟踪通过嵌入在邮件正文中的 1×1 隐藏像素图片实现。
+
+    **触发时机：** 收件人邮件客户端加载跟踪像素时。
+
+    | 字段 | 类型 | 说明 |
+    | --- | --- | --- |
+    | `EventCode` | string | `"Opened"` |
+    | `Email` | string | 收件人邮箱地址。 |
+    | `EventType` | string | 活动类型。 |
+    | `SentMailListName` | string | 目标联系人列表名。 |
+    | `SubmitDateTimeV2` | datetime | 邮件提交时的 UTC 时间戳。 |
+    | `DeliveredTimeV2` | datetime | 邮件投递时的 UTC 时间戳。 |
+    | `TriggeredDateTimeV2` | datetime | 本次打开事件的 UTC 时间戳。 |
+    | `UniqueMsgID` | string | 消息唯一标识。 |
+    | `IP` | string | 邮件被打开时的 IP 地址。 |
+    | `Platform` | string | 操作系统或设备平台（例如 `"iOS"`、`"Windows"`）。 |
+    | `BrowserType` | string | 打开邮件所用的邮件客户端或浏览器（例如 `"Gmail"`、`"AppleMail"`）。 |
+    | `UA` | string | 打开请求的完整 User-Agent 字符串。 |
+    | `Guid` | string | 活动标识。 |
+    | `MailName` | string | 活动名称。 |
+
+    <Note>
+      打开跟踪依赖收件人邮件客户端加载图片。部分客户端默认屏蔽图片加载，可能导致打开事件低估。Apple Mail Privacy Protection（MPP）也可能导致打开事件虚高或延迟。
+    </Note>
+  </Accordion>
+
+  <Accordion title="Clicked：收件人点击了被跟踪的链接">
+    **EventCode：** `Clicked`
+
+    每次收件人点击邮件中被跟踪的链接时触发。每次点击生成一个事件，收件人点击三个不同链接会产生三个 `Clicked` 事件。触发前提是您在 EffiLink 账户或活动中启用了点击跟踪。
+
+    **触发时机：** 收件人点击被跟踪链接并通过 EffiLink 点击跟踪服务重定向时。
+
+    | 字段 | 类型 | 说明 |
+    | --- | --- | --- |
+    | `EventCode` | string | `"Clicked"` |
+    | `Email` | string | 收件人邮箱地址。 |
+    | `EventType` | string | 活动类型。 |
+    | `SentMailListName` | string | 目标联系人列表名。 |
+    | `SubmitDateTimeV2` | datetime | 邮件提交时的 UTC 时间戳。 |
+    | `DeliveredTimeV2` | datetime | 邮件投递时的 UTC 时间戳。 |
+    | `TriggeredDateTimeV2` | datetime | 本次点击事件的 UTC 时间戳。 |
+    | `UniqueMsgID` | string | 消息唯一标识。 |
+    | `IP` | string | 点击链接时的 IP 地址。 |
+    | `Platform` | string | 操作系统或设备平台。 |
+    | `BrowserType` | string | 打开链接所使用的浏览器。 |
+    | `UA` | string | 点击请求的完整 User-Agent 字符串。 |
+    | `Link` | string | 被点击的目标 URL。 |
+    | `Guid` | string | 活动标识。 |
+    | `MailName` | string | 活动名称。 |
+  </Accordion>
+
+  <Accordion title="Unsubscribed：收件人已退订">
+    **EventCode：** `Unsubscribed`
+
+    当收件人点击邮件中的退订链接时触发。EffiLink 会自动将该联系人的 `email_bounced_flag` 更新为 `2`（退订过滤），阻止后续发送。
+
+    **触发时机：** 退订动作被确认时（根据您的设置，可能是一键退订或经确认页面）。
+
+    | 字段 | 类型 | 说明 |
+    | --- | --- | --- |
+    | `EventCode` | string | `"Unsubscribed"` |
+    | `Email` | string | 收件人邮箱地址。 |
+    | `EventType` | string | 活动类型。 |
+    | `SentMailListName` | string | 目标联系人列表名。 |
+    | `TriggeredDateTimeV2` | datetime | 退订事件的 UTC 时间戳。 |
+    | `UniqueMsgID` | string | 消息唯一标识。 |
+    | `Guid` | string | 活动标识。 |
+    | `MailName` | string | 活动名称。 |
+    | `Reason` | string | 若已收集，收件人提供的退订原因。 |
+  </Accordion>
+
+  <Accordion title="SpamReport：收件人举报为垃圾邮件">
+    **EventCode：** `SpamReport`
+
+    当收件人在邮件客户端点击“举报垃圾邮件”或“标记为垃圾”时触发（反馈回路事件）。EffiLink 会自动将该联系人的 `email_bounced_flag` 更新为 `3`（投诉过滤）。
+
+    **触发时机：** 收到来自收件人邮件服务商的反馈回路投诉时。
+
+    | 字段 | 类型 | 说明 |
+    | --- | --- | --- |
+    | `EventCode` | string | `"SpamReport"` |
+    | `Email` | string | 收件人邮箱地址。 |
+    | `EventType` | string | 活动类型。 |
+    | `SenderEmail` | string | 发件地址。 |
+    | `SentMailListName` | string | 目标联系人列表名。 |
+    | `TriggeredDateTimeV2` | datetime | 投诉事件的 UTC 时间戳。 |
+    | `UniqueMsgID` | string | 消息唯一标识。 |
+    | `Guid` | string | 活动标识。 |
+    | `MailName` | string | 活动名称。 |
+
+    <Warning>
+      较高的垃圾邮件投诉率会损害发件人声誉。请密切关注 `SpamReport` 事件，调查产生投诉的活动内容和发送实践。大多数邮件服务商认为超过 0.1% 的投诉率就存在问题。
+    </Warning>
+  </Accordion>
+
+  <Accordion title="TaskStatus：营销任务状态变化">
+    **EventCode：** `TaskStatus`
+
+    当营销任务状态变化时触发。可用于触发下游工作流，例如在发送完成时启动一个活动后报表任务。
+
+    **触发时机：** 活动转变为 `Created`（任务已排程或入队）或 `Completed`（所有发送已尝试）时。
+
+    | 字段 | 类型 | 说明 |
+    | --- | --- | --- |
+    | `EventCode` | string | `"TaskStatus"` |
+    | `StatusCode` | string | `"Created"` 表示任务已创建/入队；`"Sending"`（发送中）；`"Completed"` 表示任务已完成。 |
+    | `TriggeredDateTimeV2` | datetime | 状态变化的 UTC 时间戳。 |
+    | `MailName` | string | 活动名称。 |
+    | `Guid` | string | 活动标识。 |
+    | `Creator` | string | 创建该营销任务的用户或 API 密钥。 |
+    | `LanguageCode` | string | 活动关联的语言/区域代码。 |
+    | `MarketName` | string | 活动的市场或区域名称。 |
+    | `SubscriptName` | string | 任务所属的订阅或套餐名称。 |
+    | `ProjectCode` | string | 项目或子账户代码（如适用）。 |
+    | `Description` | string | 可读的状态描述或备注。 |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## 延伸阅读
+
+- [Webhooks 概览与配置](/zh/docs/webhooks)：配置端点、安全最佳实践与 API 参考。
+- [Webhook 配置 API](/zh/api/webhook-config)：以编程方式获取与保存 Webhook 配置。
+- [联系人属性](/zh/docs/contact-properties)：了解 Dropped 事件原因码涉及的 `email_bounced_flag` 值。

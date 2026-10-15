@@ -1,0 +1,82 @@
+---
+title: "发送您的第一封邮件：快速开始"
+sidebarTitle: "快速开始"
+description: "本指南将引导您完成创建 EffiLink 账户、获取 API 密钥、设置已验证的发件人，并进行第一次 API 调用发送事务性邮件。整个过程不到 5 分钟。"
+---
+
+<Steps>
+  <Step title="创建账户">
+    在 [app.effilink.co](https://app.effilink.co) 注册。账户可免费创建，试用无需信用卡。
+  </Step>
+  <Step title="获取 API 密钥">
+    1. 登录您的 EffiLink 账户。
+    2. 点击右上角的 **设置**。
+    3. 进入 **接口配置 → API  Keys**。
+    4. 点击右上角的 **创建 API Key**。
+    5. **立即保存生成的密钥**：密钥的后半部分仅显示一次。
+
+    <Warning>
+      请将 API 密钥保存在安全的密钥管理工具中。切勿提交到版本控制或暴露在客户端代码中。
+    </Warning>
+  </Step>
+  <Step title="添加已验证的发件人">
+    在发送邮件之前，您必须先登记发送地址或域名：
+
+    1. 进入 **设置 →发件人&域名→新增发件人**。
+    2. 添加您的发送邮箱地址（例如 `noreply@yourdomain.com`）。
+    3. 通过添加 EffiLink 提供的 DNS 记录（SPF、DKIM、DMARC）完成域名验证。
+
+    <Info>
+      在域名验证进行期间，您可以使用沙箱模式进行测试。请参阅[沙箱模式](/zh/docs/sandbox-mode)。
+    </Info>
+  </Step>
+  <Step title="发送第一封邮件">
+    准备好 API 密钥和已验证的发件人后，发起以下 API 调用：
+
+    ```bash
+    curl --request POST \
+      --url https://api.effilink.co/v5/transactional/mail/sends_customised \
+      --header 'Content-Type: application/json' \
+      --header 'ApiKey: YOUR_API_KEY' \
+      --data '{
+        "subject": "欢迎加入我们的平台",
+        "content": "<p>您好！感谢注册。</p>",
+        "senderMail": "noreply@yourdomain.com",
+        "senderName": "您的公司",
+        "to": {
+          "email": "recipient@example.com",
+          "name": "收件人姓名"
+        }
+      }'
+    ```
+
+    成功的响应示例：
+
+    ```json
+    {
+      "code": 200,
+      "message": ""
+    }
+    ```
+  </Step>
+</Steps>
+
+## 接下来做什么？
+
+<CardGroup cols={2}>
+  <Card title="事务邮件" icon="envelope" href="/zh/docs/transactional-email">
+    了解发送单封和批量事务性邮件的所有参数。
+  </Card>
+
+  <Card title="营销邮件" icon="bullhorn" href="/zh/docs/campaign-email">
+    了解如何向联系人列表发送营销活动。
+  </Card>
+
+  <Card title="Webhooks" icon="webhook" href="/zh/docs/webhooks">
+    实时接收投递和互动事件。
+  </Card>
+
+  <Card title="API 参考" icon="code" href="/zh/api/transactional-send">
+    完整的接口参考文档。
+  </Card>
+</CardGroup>

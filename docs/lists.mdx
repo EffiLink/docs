@@ -1,0 +1,138 @@
+---
+title: "EffiLink Contact Lists: Create, Search, and Delete"
+sidebarTitle: "Contact Lists"
+description: "Learn how to create, search, and delete contact lists in EffiLink. Organize your audience into groups for targeted campaign sending and list management."
+---
+
+Contact lists (also called groups) are named collections of contacts in your EffiLink account. They let you segment your audience so you can send targeted campaigns to the right people — for example, a "Newsletter Subscribers" list for weekly email blasts or a "VIP Customers" list for exclusive offers. Lists can be created manually in the dashboard or programmatically via the API.
+
+---
+
+## Create a list
+
+`POST /v5/lists/add`
+
+Creates a new contact list in your account. Once created, you can add contacts to it using the [Contacts API](/docs/contacts) or reference it by name during a bulk import.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `listName` | string | Yes | Unique name for the list within your account. |
+| `listDescription` | string | No | A short description of the list's purpose. |
+| `sandboxMode` | boolean | No | When `true`, simulates creation without saving data. |
+
+**Example request**
+
+```json
+{
+  "listName": "Newsletter Subscribers",
+  "listDescription": "Contacts who opted in via the website signup form"
+}
+```
+
+**Example response**
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+<Note>
+  List names must be unique within your account. If you attempt to create a list with a name that already exists, the API will return an error. To avoid this during bulk imports, pass `listName` directly in the import request — EffiLink will create the list automatically if it does not exist.
+</Note>
+
+---
+
+## Search and retrieve lists
+
+`POST /v5/lists/get`
+
+Returns a paginated collection of contact lists in your account. Use the optional filters to narrow results by name or list type, and control ordering with the `sort` parameter.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `search` | string | No | Filter lists whose name contains this string. |
+| `listType` | int | No | `0` = dynamic lists, `1` = static lists. Omit to return both types. |
+| `sort` | string | No | Sort order: `CreateDate` or `ModifyDate` (descending). |
+| `pageSize` | int | No | Number of lists per page. Default `10`. |
+| `pageIndex` | int | No | Page number, starting at `1`. Default `1`. |
+
+**Example request**
+
+```json
+{
+  "search": "Newsletter",
+  "listType": 1,
+  "sort": "CreateDate",
+  "pageSize": 20,
+  "pageIndex": 1
+}
+```
+
+**Response fields**
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `Id` | string | Unique list identifier. |
+| `TeamId` | string | ID of the team that owns the list. |
+| `ListName` | string | Display name of the list. |
+| `ListStatus` | int | Current status of the list (`1` = normal). |
+| `ListType` | int | `0` = dynamic, `1` = static. |
+| `ListFilters` | string | Filter rules for dynamic lists. Present on dynamic lists only. |
+| `CreateUserId` | int | ID of the user who created the list. |
+| `CreateDate` | datetime | Timestamp when the list was created. |
+| `ModifyDate` | datetime | Timestamp of the last modification. |
+| `totalRecords` | int | Total number of contacts currently in the list. |
+
+---
+
+## Delete a list
+
+`POST /v5/lists/delete`
+
+Permanently deletes a contact list. Contacts that were members of the list are **not** deleted from your account — only the list grouping itself is removed.
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `listName` | string | Yes | Name of the list to delete. |
+| `sandboxMode` | boolean | No | When `true`, simulates deletion without removing data. |
+
+**Example request**
+
+```json
+{
+  "listName": "Old Campaign List"
+}
+```
+
+<Warning>
+  Deleting a list is permanent and cannot be undone. Any scheduled or in-progress campaigns targeting this list may be affected. Verify no active campaigns reference the list before deleting it.
+</Warning>
+
+---
+
+## Using lists in campaign sending
+
+When you launch an email campaign in EffiLink, you specify one or more contact lists as the audience. EffiLink resolves the full membership of each list at send time and delivers the campaign to every eligible contact. You can target a single focused list or combine multiple lists for broader reach.
+
+Lists also serve as the target when using the [bulk import endpoint](/docs/contacts#bulk-import-contacts) — set the `listName` parameter and the imported contacts are automatically enrolled.
+
+---
+
+## Static vs. dynamic lists
+
+EffiLink supports two list types, visible in the `ListType` field of the API response:
+
+| Type | Value | Behavior |
+| --- | --- | --- |
+| **Static** | `1` | Membership is fixed. Contacts are added and removed explicitly via the API or dashboard. Ideal for one-off campaigns and curated segments. |
+| **Dynamic** | `0` | Membership is rule-based and updates automatically as contacts meet or leave the defined criteria. Useful for ongoing lifecycle segments such as "Active in last 30 days." |
+
+When creating a list via the API (`POST /v5/lists/add`), the list is created as **static** by default. Dynamic lists with custom rules must be configured in the EffiLink dashboard.
+
+---
+
+## Platform quota
+
+Your EffiLink account supports a maximum of **300 contact lists**. If you reach this limit, you must delete unused lists before creating new ones. To review your current lists and identify candidates for cleanup, use `POST /v5/lists/get` with a large `pageSize` and paginate through all results.

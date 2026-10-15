@@ -1,0 +1,73 @@
+---
+title: "Platform Quotas for EffiLink Trial and Paid Accounts"
+sidebarTitle: "Platform Quotas"
+description: "Review EffiLink's per-account object and storage quotas for campaigns, media, automations, contacts, and send volume across trial and paid plans."
+---
+
+Quotas define the maximum number of objects you can create or store within your EffiLink account. Unlike [rate limits](/docs/rate-limits), which govern how quickly you can call the API, quotas are cumulative caps on the data and activity within your account. Quotas are enforced per active account and vary between trial and paid plans.
+
+## Campaign quotas
+
+The number of email and SMS campaigns you can create is limited by your account type.
+
+| Campaign type | Trial account | Paid account |
+|---------------|:-------------:|:------------:|
+| Email campaigns | 100 | On demand |
+| SMS campaigns | 100 | On demand |
+
+## Media library storage
+
+Assets uploaded to your EffiLink media library (images, attachments, etc.) count against your storage quota.
+
+| Account type | Storage limit |
+|:------------:|:-------------:|
+| Trial account | 10 MB |
+| Paid account | 2 GB |
+
+## Automation workflow limits
+
+The number of active automation workflows you can run simultaneously is capped per account.
+
+| Account type | Active workflows |
+|:------------:|:----------------:|
+| Trial account | 0 |
+| Paid account | On demand |
+
+<Note>
+  Only **active** workflows count against this quota. Paused or archived workflows do not consume a slot, so you can deactivate unused automations to free up capacity.
+</Note>
+
+## Contact management limits
+
+The following contact-related quotas apply equally to all account types, regardless of plan.
+
+| Resource | Limit |
+|----------|:-----:|
+| Custom contact properties | 200 |
+| Contact groups (lists) | 300 |
+
+## Send volume quotas
+
+Send volume quotas cap the total number of messages you can dispatch. Paid accounts have on-demand volume, which scales with your plan and usage.
+
+| Message type | Trial account | Paid account |
+|--------------|:-------------:|:------------:|
+| Email sends | 100 | On demand |
+| SMS sends | 0 | On demand |
+
+<Note>
+  Trial accounts cannot send SMS messages. Upgrade to a paid plan to enable SMS sending.
+</Note>
+
+## What to do when you reach a quota
+
+When a quota is reached, the API will reject new object creation until you free up capacity or upgrade your account.
+
+**To free up capacity:**
+- **Delete unused campaigns** — Remove draft or completed campaigns you no longer need.
+- **Clear the media library** — Delete images or files that are no longer referenced by active campaigns.
+- **Deactivate idle workflows** — Pause automations that are not currently in use to free up active workflow slots.
+- **Remove stale contacts or groups** — Delete contact groups that are no longer active to stay within the 300-list limit.
+
+**To increase your limits:**
+Contact [EffiLink Support](mailto:support@effilink.com) or visit your account's billing page to upgrade from a trial to a paid plan, or to discuss higher-tier limits for large-scale sending needs.

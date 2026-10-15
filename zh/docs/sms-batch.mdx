@@ -1,0 +1,83 @@
+---
+title: "批量发送短信"
+sidebarTitle: "批量发送短信"
+description: "使用全局模板、逐收件人覆盖和动态标签占位符，在一次 API 调用中发送最多 100 条单独个性化的短信。"
+---
+
+批量个性化短信让你可以在一次 `POST /v5/sms/sends` 请求中发送最多 100 条定制化消息。你无需为每个收件人分别发起 API 调用，而是定义一个全局模板，并有选择性地为任何单个收件人覆盖内容、模板名称或个性化标签。
+
+## 批量短信的工作原理
+
+每个批量请求都由两个层次组成：
+
+1. **全局层** —— 默认的 `content` 字符串或 `templateName`，以及可选的 `params` 标签值，应用于每个未提供自己覆盖的收件人。
+2. **逐收件人层** —— `toList` 中的单个条目可以携带自己的 `content`、`templateName` 或 `params`，对该收件人而言，优先于全局值。
+
+### 参数优先级（从高到低）
+
+| 优先级 | 字段 | 范围 |
+| --- | --- | --- |
+| 1（最高） | `toList[].templateName` | 逐收件人模板 |
+| 2 | `toList[].content` | 逐收件人内容字符串 |
+| 3 | `templateName`（顶层） | 全局模板 |
+| 4（最低） | `content`（顶层） | 全局内容字符串 |
+
+## 使用 `{{tag}}` 占位符
+
+在任何 `content` 字符串中包含 `{{tagName}}` 标记，即可在发送时注入动态值。
+
+```json
+{
+  "content": "[EffiLink] Hi {{name}}, your code is {{code}}.",
+  "params": {"name": "User", "code": "000000"}
+}
+```
+
+## 发送个性化批量消息
+
+**端点：** `POST /v5/sms/sends`
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/sms/sends \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "content": "[YourBrand] Global message: {{code}}",
+    "params": {"code": "DEFAULT"},
+    "toList": [
+      { "mobile": "18800006666" },
+      { "mobile": "18800008888", "content": "[YourBrand] Custom message for 8888" },
+      { "mobile": "18800009999", "templateName": "verification_template" },
+      { "mobile": "18800000000", "templateName": "verification_template", "params": {"code": "789012"} }
+    ]
+  }'
+```
+
+### 请求参数
+
+#### 顶层字段
+
+| 参数 | 类型 | 必需 | 说明 |
+| --- | --- | --- | --- |
+| `content` | string | 条件必需 | 全局短信内容。若未提供 `templateName` 则必需。 |
+| `templateName` | string | 条件必需 | 预登记的全局模板名称。优先于顶层 `content`。 |
+| `params` | object | 否 | 全局标签值。 |
+| `toList` | array[object] | ✅ 是 | 收件人列表，最多 100 条。 |
+| `sandboxMode` | boolean | 否 | 设为 `true` 仅校验不投递。 |
+
+#### `toList` 条目字段
+
+| 字段 | 类型 | 必需 | 说明 |
+| --- | --- | --- | --- |
+| `mobile` | string | ✅ 是 | 收件人手机号。 |
+| `content` | string | 否 | 逐收件人内容，覆盖全局 `content`。 |
+| `templateName` | string | 否 | 逐收件人模板，优先级最高。 |
+| `params` | object | 否 | 逐收件人标签值，优先于全局 `params`。 |
+
+## 小技巧
+
+- **每批保持在 100 条以内。**
+- **受监管内容优先使用模板。**
+- **使用 `sandboxMode` 进行测试。**
+- **减少冗余的逐收件人覆盖。**

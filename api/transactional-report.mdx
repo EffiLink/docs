@@ -1,0 +1,123 @@
+---
+title: "Transactional Email Statistics — Daily Breakdown"
+sidebarTitle: "Email Stats"
+description: "Retrieve transactional email statistics grouped by day for a date range, covering sent, open, click, bounce, and unsubscribe counts."
+---
+
+## Overview
+
+Retrieve transactional email statistics for a given date range. Results are returned as a daily breakdown covering delivery, engagement, bounce, and unsubscribe metrics.
+
+**Base URL:** `https://api.effilink.co`
+
+**Endpoint:** `POST /v5/transactional/mail/stats/get`
+
+**Authentication:** `ApiKey` header
+
+---
+
+## Request Parameters
+
+<ParamField body="startDate" type="string" required>
+  Start of the date range to query, in `YYYY-MM-DD` format. This date is **inclusive**.
+
+  Example: `"2025-05-01"`
+</ParamField>
+
+<ParamField body="endDate" type="string" required>
+  End of the date range to query, in `YYYY-MM-DD` format. This date is **inclusive**.
+
+  Example: `"2025-05-31"`
+</ParamField>
+
+---
+
+## Response Fields
+
+<ResponseField name="code" type="int">
+  `200` on success. A non-200 value indicates an error.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  `null` on success. Contains an error description on failure.
+</ResponseField>
+
+<ResponseField name="mailStatsList" type="array[object]">
+  Array of daily statistics objects covering the requested date range. Each object represents one calendar day.
+
+  <Expandable title="mailStatsList[] fields">
+    <ResponseField name="statsDate" type="string">
+      The calendar date for this entry in `YYYY-MM-DD` format.
+    </ResponseField>
+
+    <ResponseField name="sentCount" type="int">
+      Total number of emails successfully sent on this date.
+    </ResponseField>
+
+    <ResponseField name="openCount" type="int">
+      Number of sent emails that were opened by recipients. Requires open tracking to be enabled at send time.
+    </ResponseField>
+
+    <ResponseField name="clickCount" type="int">
+      Number of link clicks recorded across all sent emails. Requires click tracking to be enabled at send time.
+    </ResponseField>
+
+    <ResponseField name="bounceCount" type="int">
+      Number of soft bounces recorded — emails that were temporarily undeliverable.
+    </ResponseField>
+
+    <ResponseField name="unsentCount" type="int">
+      Number of emails that were filtered or suppressed and not delivered (e.g. due to unsubscribe lists or invalid addresses).
+    </ResponseField>
+
+    <ResponseField name="unsubscribeCount" type="int">
+      Number of recipients who unsubscribed via the email's unsubscribe link on this date.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## Example
+
+### Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/transactional/mail/stats/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "startDate": "2025-05-01",
+    "endDate": "2025-05-31"
+  }'
+```
+
+### Response
+
+```json
+{
+  "code": 200,
+  "message": null,
+  "mailStatsList": [
+    {
+      "statsDate": "2025-05-01",
+      "sentCount": 450,
+      "openCount": 120,
+      "clickCount": 38,
+      "bounceCount": 2,
+      "unsentCount": 0,
+      "unsubscribeCount": 1
+    },
+    {
+      "statsDate": "2025-05-02",
+      "sentCount": 510,
+      "openCount": 155,
+      "clickCount": 44,
+      "bounceCount": 0,
+      "unsentCount": 1,
+      "unsubscribeCount": 2
+    }
+  ]
+}
+```

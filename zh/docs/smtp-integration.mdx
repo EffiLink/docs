@@ -1,0 +1,142 @@
+---
+title: "集成 SMTP 到您的应用"
+sidebarTitle: "SMTP 集成"
+description: "使用您的 API 密钥作为密码，将任何支持 SMTP 的应用或库连接到 EffiLink，可靠地发送事务性或营销邮件。"
+---
+
+使用 SMTP 中继，从您的电子邮件客户端或应用程序发送事务性邮件（订单确认、密码重置、账户创建通知和其他自动消息）。
+
+EffiLink 提供标准 SMTP 接口，让您可以从任何支持 SMTP 的应用、框架或邮件库发送邮件，无需修改现有的邮件发送代码。只需将 SMTP 客户端指向 EffiLink 的服务器，使用 API 密钥进行认证，邮件即可通过 EffiLink 的投递基础设施进行路由。
+
+SMTP 非常适合旧版应用、CMS 平台以及任何不方便切换到 REST API 的环境。
+
+---
+
+## 连接设置
+
+**1、根据您所在地域选择就近节点：**
+
+中国大陆：
+
+```text
+smtp.effilink.co
+```
+
+港澳台及海外地区（不包括欧盟）：
+
+```text
+hk-smtp.effilink.co
+```
+
+欧盟地区：
+
+```text
+eu-smtp.effilink.co
+```
+
+**2、在 SMTP 客户端或应用中使用以下设置：**
+
+**用户名和密码：**
+
+您可以使用账户下任意有效的 <kbd>API 密钥</kbd> 作为 SMTP 密码。由于 API 密钥本身即可完成认证，EffiLink 不依赖 SMTP 用户名进行请求认证。建议使用您 EffiLink 账户的主要联系邮箱作为用户名。
+
+**端口：**
+
+- **非加密连接：** 使用端口 **_1026_** 或 **_1027_**
+- **加密连接（SSL/TLS）：** 使用端口 **_4026_** 或 **_4027_**
+
+<Tip>
+  您可能还需要一个发送域名（例如 `mail.example.com`）。详见发件人域名管理。
+</Tip>
+
+---
+
+## SMTP 响应码
+
+您的每次 SMTP 调用都会返回一个响应码：
+
+- **2xx — 成功：** 邮件已被接收并接受投递。
+- **4xx — 临时错误：** 出现暂时性错误，可稍后重试。
+- **5xx — 永久错误：** 出现永久性错误，请勿继续投递。
+
+| 代码 | 消息 | 原因 | 处理方式 |
+| --- | --- | --- | --- |
+| `250` | `ok data code message [txsID=...]; in reply to DATA` | 服务器已接收邮件 | 无需处理 |
+| `530` | `Authentication failed` | API 密钥或密钥错误，或账户已过期 | 在 EffiLink 控制台核对 API 密钥 |
+| `540` | `permission required` | 账户未开通此功能 | 请联系 EffiLink 客服开通 |
+| `553` | `mail from <x> not allowed` | 发件人未在平台登记 | 在 EffiLink 账户中登记并验证发件人 |
+| `553` | `mail <x> not allowed (mailbox syntax incorrect)` | 收件人地址格式不正确 | 检查收件人地址（见下方地址格式规则） |
+| `502` | `Email content is too large ([length])` | 邮件内容超过 10 MB 上限 | 减小附件大小或将大文件托管到外部 |
+| `452` | `Insufficient points error (accountId=..., availablePoints=...)` | 账户余额不足 | 请联系 EffiLink 客服充值 |
+
+**收件人地址格式规则：**
+
+@ 号之前的本地部分：
+
+- 可包含数字、大小写字母，以及 `.!#$%&'*+/=?^_\`\{|\}~-\` 等符号。
+- 只能以字母或数字开头。
+- 点号不能连续出现，且不能位于末尾。
+
+@ 号之后的域名部分：
+
+- 可包含数字、大小写字母、`.` 和 `-`。
+- 只能以字母或数字开头和结尾。
+- 点号和连字符不能连续出现。
+
+## 使用 `X-Easeye-*` 头的 SMTP 扩展
+
+EffiLink 支持自定义 SMTP 头，让您无需离开 SMTP 工作流即可使用平台功能（跟踪、分类、优先级和消息过期）。
+
+### `X-Easeye-API`
+
+传入 JSON 载荷以配置跟踪、分类、活动标签、优先级和自定义跟踪域名。
+
+```text
+X-Easeye-API: {"category":"Registration","campaign":"registration email for new users","send_options":{"track_open":1,"track_click":1,"track_subscription":1,"custom_domain":"http://linktrace.test.com"},"priority":"low"}
+```
+
+| 字段 | 类型 | 描述 |
+| --- | --- | --- |
+| `category` | string | 邮件类别（例如注册邮件 Registration）。**最大长度**：100 字节。**允许字符**：A‑Z、a‑z、0‑9 |
+| `campaign` | string | 邮件任务名称。**最大长度**：100 字节。**允许字符**：A‑Z、a‑z、0‑9 |
+| `send_options.track_open` | int | `1` 启用打开跟踪 |
+| `send_options.track_click` | int | `1` 启用点击跟踪。可将**特定 URL**排除跟踪，参见[邮件跟踪](/zh/docs/email-tracking) |
+| `send_options.track_subscription` | int | 是否添加**退订链接**。值为 `1` 时添加，其他值不添加。 |
+| `send_options.custom_domain` | string | 用于邮件链接跟踪的自定义域名 |
+| `send_options.priority` | string | `high`、`median` 或 `low`（默认：`low`） |
+
+### `X-Easeye-UniqueMsgID`
+
+作为发送方维度的邮件唯一标识，用于消息去重和跟踪。最大长度 50 字节；仅允许大小写字母、数字和连字符。
+
+```text
+X-Easeye-UniqueMsgID: order-confirm-1234-abc
+```
+
+### `X-Easeye-ExpirationDate`
+
+设置邮件投递过期时间。若在此时间前尚未成功投递，EffiLink 将停止尝试并返回过期状态。格式：`yyyy-MM-dd HH:mm:ss`，时区为东八区（北京时间）。
+
+```text
+X-Easeye-ExpirationDate: 2024-10-09 11:03:25
+```
+
+### 使用 `X-Easeye-*` 头的完整示例
+
+```shellscript
+EHLO yourdomain.com
+AUTH LOGIN
+[base64 username]
+[base64 API key]
+MAIL FROM:<no-reply@yourdomain.com>
+RCPT TO:<user@example.com>
+DATA
+From: Your App <no-reply@yourdomain.com>
+To: user@example.com
+Subject: Welcome to EffiLink
+X-Easeye-API: {"category":"Onboarding","send_options":{"track_open":1,"track_click":1},"priority":"low"}
+X-Easeye-UniqueMsgID: welcome-user-5678
+Content-Type: text/html; charset=UTF-8
+
+<p>Welcome! Thanks for signing up.</p>
+```

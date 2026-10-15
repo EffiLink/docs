@@ -1,0 +1,261 @@
+---
+title: "发件人和发件方域名 API "
+sidebarTitle: "发件人"
+---
+
+## 概述
+
+在 EffiLink 中注册、验证与移除已验证的发件人地址。检查 MX、SPF、DKIM 与 DMARC 验证的 DNS 记录状态。
+
+---
+
+## 获取发件人
+
+`POST /v5/verified_senders/get`
+
+返回与您账户关联的所有已验证发件人及其 DNS 验证状态。可选择过滤到单个发件人地址。
+
+### 请求体
+
+<ParamField body="senderEmail" type="string">
+  过滤到特定发件人地址的结果。省略此字段(或传入空对象)以获取所有发件人。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串;失败时为错误描述。
+</ResponseField>
+
+<ResponseField name="mailFromDomains" type="array[object]">
+  已验证发件人记录数组。
+
+  <Expandable title="sender 对象">
+    <ResponseField name="from" type="string">
+      发件人邮箱地址(例如 `noreply@yourdomain.com`)。
+    </ResponseField>
+
+    <ResponseField name="fromDomain" type="string">
+      发件人邮箱域名(例如 `yourdomain.com`)。
+    </ResponseField>
+
+    <ResponseField name="mxStatus" type="int">
+      MX 记录验证状态。`1` = 有效,`0` = 无效或未验证。
+    </ResponseField>
+
+    <ResponseField name="spfStatus" type="int">
+      SPF 记录验证状态。`1` = 有效,`0` = 无效或未验证。
+    </ResponseField>
+
+    <ResponseField name="dkimStatus" type="int">
+      DKIM 记录验证状态。`1` = 有效,`0` = 无效或未验证。
+    </ResponseField>
+
+    <ResponseField name="dmarcStatus" type="int">
+      DMARC 记录验证状态。`1` = 有效,`0` = 无效或未验证。
+    </ResponseField>
+
+    <ResponseField name="isValidate" type="int">
+      总体验证标志。`1` = 完全验证,`0` = 待验证或失败。
+    </ResponseField>
+
+    <ResponseField name="isYiyeDomain" type="int">
+      `1` 表示该域名是 EffiLink 托管的域名;`0` 表示自定义域名。
+    </ResponseField>
+
+    <ResponseField name="senderType" type="int">
+      `1` = 营销发件人;`2` = 事务性发件人。
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```python
+curl --request POST \
+  --url https://api.effilink.co/v5/verified_senders/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{}'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": "",
+  "mailFromDomains": [
+    {
+      "from": "noreply@yourdomain.com",
+      "fromDomain": "yourdomain.com",
+      "mxStatus": 1,
+      "spfStatus": 1,
+      "dkimStatus": 1,
+      "dmarcStatus": 1,
+      "isValidate": 1,
+      "isYiyeDomain": 0,
+      "senderType": 2
+    }
+  ]
+}
+```
+
+---
+
+## 添加发件人
+
+`POST /v5/verified_senders/add`
+
+注册新的发件人邮箱地址以进行域名验证。地址必须属于子域名或非顶级域名(例如 `noreply@mail.yourdomain.com`)。
+
+### 请求体
+
+<ParamField body="senderEmail" type="string" required>
+  要注册的发件人邮箱地址。必须是非顶级域名地址(例如 `noreply@yourdomain.com`)。
+</ParamField>
+
+<ParamField body="senderType" type="string" required>
+  此发件人的预期用途:
+
+  - `"1"` — 营销邮件。
+  - `"2"` — 事务性邮件。
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  为 `true` 时,操作被模拟且不注册任何发件人。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串;失败时为错误描述。
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/verified_senders/add \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "senderEmail": "noreply@yourdomain.com",
+    "senderType": "2"
+  }'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+---
+
+## 验证发件人域名
+
+`POST /v5/verified_senders/verify`
+
+触发实时 DNS 查询,以验证已注册发件人地址的 MX、SPF、DKIM 和 DMARC 记录。
+
+### 请求体
+
+<ParamField body="fromDomain" type="string" required>
+  要验证其域名 DNS 记录的发件人地址。
+</ParamField>
+
+<ParamField body="selector" type="string" required>
+  EffiLink 为您域名发布 DKIM 公钥时使用的 DKIM 选择器字符串(例如 `effilink2024`)。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串;失败时为错误描述。
+</ResponseField>
+
+<ResponseField name="valid" type="boolean">
+  当所有必需的 DNS 记录都通过验证时为 `true`。
+</ResponseField>
+
+<ResponseField name="goodMX" type="boolean">
+  当 MX 记录配置正确时为 `true`。
+</ResponseField>
+
+<ResponseField name="goodSPF" type="boolean">
+  当 SPF 记录配置正确时为 `true`。
+</ResponseField>
+
+<ResponseField name="goodDKIM" type="boolean">
+  当 DKIM 记录针对给定选择器配置正确时为 `true`。
+</ResponseField>
+
+<ResponseField name="goodDMARC" type="boolean">
+  当 DMARC 记录配置正确时为 `true`。
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/verified_senders/verify \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "fromDomain": "noreply@yourdomain.com",
+    "selector": "effilink2024"
+  }'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": "",
+  "valid": true,
+  "goodMX": true,
+  "goodSPF": true,
+  "goodDKIM": true,
+  "goodDMARC": true
+}
+```
+
+---
+
+## 删除发件人
+
+`POST /v5/verified_senders/delete`
+
+从您的账户中移除已验证的发件人地址。已在传输中的邮件不受影响。
+
+### 请求体
+
+<ParamField body="senderEmail" type="string" required>
+  要移除的发件人邮箱地址。
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  为 `true` 时,操作被模拟且不删除任何发件人。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串;失败时为错误描述。
+</ResponseField>
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```

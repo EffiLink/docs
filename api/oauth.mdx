@@ -1,0 +1,138 @@
+---
+title: "OAuth 2.0 Endpoints — Authorize and Get Access Token"
+sidebarTitle: "OAuth Endpoints"
+description: "Implement OAuth 2.0 authorization code flow with EffiLink. Obtain short-lived or permanent access tokens to authenticate API requests via the OAuth header."
+---
+
+EffiLink supports **OAuth 2.0 Authorization Code flow** as an alternative to `ApiKey` authentication. Use the two endpoints below to obtain an access token that can be passed via the `OAuth` header on any API request.
+
+---
+
+## Authorization URL
+
+<ParamField path="GET" type="string">
+  `/v5/auth/oauth/authorize`
+</ParamField>
+
+Redirects the user to the EffiLink authorization consent page. After the user approves access, EffiLink redirects back to your `redirect_uri` with a short-lived authorization code.
+
+### Query Parameters
+
+<ParamField query="client_id" type="string" required>
+  The OAuth application ID generated in the EffiLink platform.
+</ParamField>
+
+<ParamField query="response_type" type="string" required>
+  Must be `code`. This is the only supported value.
+</ParamField>
+
+<ParamField query="redirect_uri" type="string" required>
+  URL-encoded callback URL where EffiLink will send the authorization code after the user approves. Must exactly match the redirect URI registered for your OAuth application.
+</ParamField>
+
+<ParamField query="scope" type="string" required>
+  Must be `All`. This is the only supported scope value.
+</ParamField>
+
+### Response
+
+This endpoint **does not return JSON**. It issues an HTTP redirect to the EffiLink authorization consent page.
+
+After the user approves the authorization request, EffiLink redirects the browser to:
+
+```
+{redirect_uri}?code=AUTHORIZATION_CODE
+```
+
+<Warning>
+  The authorization code is valid for **5 minutes** and can only be used once. Exchange it for an access token immediately using the [Get Access Token](#get-access-token) endpoint.
+</Warning>
+
+```bash
+curl --request GET \
+  --url 'https://api.effilink.co/v5/auth/oauth/authorize?client_id=1751651162214168&response_type=code&redirect_uri=https%3A%2F%2Fyourapp.com%2Fcallback&scope=All'
+```
+
+---
+
+## Get Access Token
+
+<ParamField path="GET" type="string">
+  `/v5/auth/oauth/token`
+</ParamField>
+
+Exchanges a valid authorization code for an access token. The token is used in the `OAuth` header on subsequent API requests.
+
+### Query Parameters
+
+<ParamField query="grant_type" type="string" required>
+  Must be `authorization_code`. This is the only supported value.
+</ParamField>
+
+<ParamField query="client_id" type="string" required>
+  The OAuth application ID generated in the EffiLink platform.
+</ParamField>
+
+<ParamField query="client_secret" type="string" required>
+  The OAuth application secret generated in the EffiLink platform. Keep this value confidential.
+</ParamField>
+
+<ParamField query="code" type="string" required>
+  The authorization code received in the `redirect_uri` callback from the [Authorization URL](#authorization-url) step.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="integer">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  `null` on success; an error description on failure.
+</ResponseField>
+
+<ResponseField name="accessToken" type="string">
+  The access token to include in the `OAuth` header on API requests. Maximum length is 512 bytes.
+</ResponseField>
+
+<ResponseField name="expiresIn" type="integer">
+  Remaining validity period of the token in seconds. `-1` indicates the token is permanent and does not expire.
+
+  A new token can be generated when fewer than **5 minutes** remain (`expiresIn < 300`). During the brief transition window, both the old and new tokens are simultaneously valid, preventing request interruption.
+
+  <Note>
+    Only **one active token** per API key is allowed during its validity period.
+  </Note>
+</ResponseField>
+
+```bash
+curl --request GET \
+  --url 'https://api.effilink.co/v5/auth/oauth/token?grant_type=authorization_code&client_id=1751651162214168&client_secret=YOUR_CLIENT_SECRET&code=AUTHORIZATION_CODE'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": null,
+  "accessToken": "5cb089d6eafd49caa68c41b9be9af6f6",
+  "expiresIn": -1
+}
+```
+
+---
+
+## Using the Access Token
+
+Pass the access token in the `OAuth` header on any EffiLink API request:
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/transactional/mail/sends_customised \
+  --header 'Content-Type: application/json' \
+  --header 'OAuth: 5cb089d6eafd49caa68c41b9be9af6f6' \
+  --data '{...}'
+```
+
+<Tip>
+  If you prefer not to implement the OAuth flow, you can use your `ApiKey` header directly. Both authentication methods are accepted on all EffiLink API endpoints.
+</Tip>

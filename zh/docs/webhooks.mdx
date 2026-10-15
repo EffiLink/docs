@@ -1,0 +1,189 @@
+---
+title: "Webhook 配置"
+sidebarTitle: "Webhook  配置"
+description: "配置 EffiLink Webhooks 接收实时邮件事件通知。了解如何配置、载荷格式、安全最佳实践和事件类型。"
+---
+
+Webhooks 让 EffiLink 可以近乎实时地将邮件事件数据主动推送到您自己的 HTTP 端点，无需轮询。每当发生重要事件（邮件已送达、链接被点击、收件人退订等）时，EffiLink 会将事件批量打包，以 JSON 形式 POST 到您配置的 URL。这使 Webhooks 成为构建实时看板、驱动分析管道、触发自动化流程和维护平台外审计日志的合适工具。
+
+---
+
+## Webhook 工作方式
+
+1. **发生事件**：例如收件人打开一封邮件。
+2. **EffiLink 批量打包事件**：为兼顾吞吐量并避免压垮您的端点，事件会被打包为每批最多 **1,000** 条推送。
+3. **EffiLink POST 到您的端点**：通过 HTTPS 向您配置的回调 URL 发送 JSON 数组。
+4. **您的服务器处理载荷**：解析数组并处理每个事件对象。
+
+**请求细节**
+
+| 项 | 值 |
+| --- | --- |
+| Method | `HTTP POST` |
+| Content-Type | `application/json;charset=UTF-8` |
+| User-Agent | `YiyeWebhooks` |
+| 编码 | UTF-8 |
+| 请求体格式 | 事件对象组成的 JSON 数组 |
+
+---
+
+## 配置您的 Webhook URL
+
+### 通过控制台
+
+最简单的方式是在 EffiLink 控制台中设置一个 **默认 Webhook URL**：
+
+1. 进入 **设置 → Webhooks**。
+2. 输入您的 HTTPS 回调 URL。
+3. 选择希望接收的事件类型。
+4. 将 Webhooks 切换为 **启用** 并保存。
+
+除非被覆盖，账户中的所有发件人都会使用该 URL。
+
+### 通过 API
+
+使用 [Webhook 配置 API](/api/webhook-config) 以编程方式读取或更新 Webhook 设置。
+
+**获取当前配置——`POST /v5/webhook/get`**
+
+无需请求体，返回当前 Webhook 配置：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `transEvent` | object | 每种事件类型的布尔开关。键为事件名，`true` 表示已启用。 |
+| `transEvent.dropped` | boolean | 是否启用 `Dropped` 事件。 |
+| `transEvent.bounced` | boolean | 是否启用 `Bounced` 事件。 |
+| `transEvent.delivered` | boolean | 是否启用 `Delivered` 事件。 |
+| `transEvent.spamReport` | boolean | 是否启用 `SpamReport` 事件。 |
+| `transEvent.opened` | boolean | 是否启用 `Opened` 事件。 |
+| `transEvent.clicked` | boolean | 是否启用 `Clicked` 事件。 |
+| `transEvent.unsubscribed` | boolean | 是否启用 `Unsubscribed` 事件。 |
+| `transCallbackUrl` | string | 应用于所有发件人的默认回调 URL。 |
+| `transCallbackUrlExtra` | array | 按发件人覆盖的 URL 列表。 |
+| `transEnable` | boolean | 若为 `true`，则全局启用 Webhooks。 |
+
+**保存配置——`POST /v5/webhook/save`**
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `transEvent` | object | 启用或禁用各个事件类型。仅更新提供的键；未提供的键保持当前值。 |
+| `transEvent.dropped` | boolean | `true` 接收 `Dropped` 事件，`false` 停止接收。 |
+| `transEvent.bounced` | boolean | `true` 接收 `Bounced` 事件。 |
+| `transEvent.delivered` | boolean | `true` 接收 `Delivered` 事件。 |
+| `transEvent.spamReport` | boolean | `true` 接收 `SpamReport` 事件。 |
+| `transEvent.opened` | boolean | `true` 接收 `Opened` 事件。 |
+| `transEvent.clicked` | boolean | `true` 接收 `Clicked` 事件。 |
+| `transEvent.unsubscribed` | boolean | `true` 接收 `Unsubscribed` 事件。 |
+| `transCallbackUrl` | string | 默认 HTTPS 回调 URL。 |
+| `transCallbackUrlExtra` | array | 按发件人覆盖的 URL 列表。每个对象格式：`{ "sender": "you@domain.com", "url": "https://..." }`。 |
+| `transCallbackUrlExtraUpdateMode` | string | `"save"` 表示新增/更新条目；`"replace"` 表示替换整个按发件人列表。 |
+| `transEnable` | boolean | `true` 启用，`false` 停止所有 Webhook 投递。 |
+
+**示例：启用 delivered 与 opened 事件并设置默认 URL：**
+
+```json
+{
+  "transEvent": {
+    "dropped": false,
+    "bounced": false,
+    "delivered": true,
+    "spamReport": false,
+    "opened": true,
+    "clicked": false,
+    "unsubscribed": false
+  },
+  "transCallbackUrl": "https://yourapp.com/webhooks/effilink",
+  "transEnable": true
+}
+```
+
+---
+
+## Webhook 推送示例
+
+以下是 EffiLink 投递一批事件时您的端点收到的内容。数组中可能同时包含多种事件类型。
+
+```http
+POST /your-webhook-endpoint HTTP/1.1
+Content-Type: application/json;charset=UTF-8
+User-Agent: YiyeWebhooks
+
+[
+  {
+    "EventCode": "Delivered",
+    "Email": "user@example.com",
+    "EventType": "Transactional",
+    "SenderEmail": "newsletter@yourcompany.com",
+    "SentMailListName": "Newsletter Subscribers",
+    "SubmitDateTimeV2": "2024-06-01T08:00:00Z",
+    "TriggeredDateTimeV2": "2024-06-01T08:00:05Z",
+    "UniqueMsgID": "msg_abc123",
+    "ReceiveServer": "mx.example.com",
+    "Guid": "guid_xyz789",
+    "MailName": "June Newsletter"
+  },
+  {
+    "EventCode": "Opened",
+    "Email": "user@example.com",
+    "EventType": "Transactional",
+    "SentMailListName": "Newsletter Subscribers",
+    "TriggeredDateTimeV2": "2024-06-01T09:15:22Z",
+    "UniqueMsgID": "msg_abc123",
+    "IP": "203.0.113.42",
+    "Platform": "iOS",
+    "BrowserType": "AppleMail",
+    "Guid": "guid_xyz789",
+    "MailName": "June Newsletter"
+  }
+]
+```
+
+---
+
+## 支持的事件类型
+
+| EventCode | 触发时机 |
+| --- | --- |
+| `Dropped` | 由于抑制过滤（退信、退订、投诉）邮件未被发送。 |
+| `Bounced` | 投递失败：硬退信（永久）或软退信（临时）。 |
+| `Delivered` | 邮件已被收件人邮件服务器接受。 |
+| `Opened` | 收件人打开邮件。每次打开记录一次事件。 |
+| `Clicked` | 收件人点击了被跟踪的链接。每次点击一次事件（需启用点击跟踪）。 |
+| `Unsubscribed` | 收件人点击退订链接。 |
+| `SpamReport` | 收件人将邮件标记为垃圾邮件。 |
+| `TaskStatus` | 营销任务状态变化（Created 或 Completed）。 |
+
+各事件类型的字段级完整文档请见[Webhook 事件](/zh/docs/webhook-events)。
+
+---
+
+## 安全注意事项
+
+### 校验 User-Agent 请求头
+
+EffiLink 发出的每个 Webhook 请求都包含 `User-Agent: YiyeWebhooks` 请求头。在您的端点检查该值可作为第一道防线，拒绝来自未知来源的请求。
+
+```python
+# 示例：带 User-Agent 校验的 Flask 端点
+from flask import request, abort
+
+@app.route("/effilink/webhook", methods=["POST"])
+def webhook():
+    if request.headers.get("User-Agent") != "YiyeWebhooks":
+        abort(403)
+    events = request.get_json()
+    # 处理事件...
+    return "", 200
+```
+
+### 为重复投递做好准备（幂等）
+
+如果您的端点未在预期时间内以 HTTP `2xx` 状态码响应，EffiLink 可能会重试投递。这意味着您的应用可能会多次收到同一事件。请将事件处理器设计为 **幂等**：使用 `UniqueMsgID` 结合 `EventCode` 作为复合键，在写入数据库或触发下游动作之前识别并跳过重复事件。
+
+### 使用 HTTPS
+
+请始终配置 HTTPS 回调 URL。不建议使用普通 HTTP 端点，未来平台版本可能会屏蔽。
+
+### 快速响应
+
+尽快返回 HTTP `200`，最好在任何重处理之前完成。将实际工作放入后台队列，避免端点超时进而触发重试。

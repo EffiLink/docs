@@ -1,0 +1,130 @@
+---
+title: "Integrate EffiLink with Your App via SMTP"
+sidebarTitle: "SMTP Integration"
+description: "Connect any SMTP-compatible app or library to EffiLink using your API key as a password to send transactional or marketing emails reliably."
+---
+
+EffiLink exposes a standard SMTP interface so you can send emails from any application, framework, or email library that supports SMTP — without modifying your existing mail-sending code. Simply point your SMTP client at EffiLink's servers, authenticate with your API key, and your emails are routed through EffiLink's delivery infrastructure.
+
+SMTP is ideal for legacy applications, CMS platforms, and any environment where switching to the REST API is not practical.
+
+---
+
+## Connection settings
+
+**1 、Choose the endpoint closest to your region:**
+
+Mainland China:
+
+```text
+smtp.effilink.co
+```
+
+Hong Kong China:
+
+```text
+hk-smtp.effilink.co
+```
+
+European Union:
+
+```text
+eu-smtp.effilink.co
+```
+
+**2、Use the following settings in your SMTP client or application:**
+
+**Username & Password:**
+
+You may use any active <kbd>API key</kbd> associated with your account as the SMTP password. As the <kbd>API key</kbd> alone is sufficient for authentication, EffiLink does not rely on the SMTP username for request authentication. We recommend using your EffiLink account’s primary contact email address as the username.
+
+**Ports:**
+
+- **Un-encrypted connection**: Use ports **_1026_** or **_1027_**
+- **Encrypted connection (SSL/TLS):** Use port **_4026_** or **_4027_**
+
+<Tip>
+  You may also need a sending domain (for example, `mail.example.com`). See sender domain management for details.
+</Tip>
+
+---
+
+## SMTP response codes
+
+Every SMTP call returns a response code:
+
+- **2xx — Success:** The email has been accepted for delivery.
+- **4xx — Temporary failure:** A transient error occurred. The message can be retried later.
+- **5xx — Permanent failure:** A permanent error occurred. The message should not be retried.
+
+| Code | Message | Cause | Resolution |
+| --- | --- | --- | --- |
+| `250` | `ok data code message [txsID=...]; in reply to DATA` | Server accepted the message | No action needed |
+| `530` | `Authentication failed` | Wrong API key, wrong secret, or expired account | Verify your API key in the EffiLink dashboard |
+| `540` | `permission required` | Feature not enabled on your account | Contact EffiLink support to enable the feature |
+| `553` | `mail from <x> not allowed` | Sender not registered on the platform | Register and verify the sender in your EffiLink account |
+| `553` | `mail <x> not allowed (mailbox syntax incorrect)` | Recipient address has invalid format | Check the recipient address (see recipient format rules below) |
+| `502` | `Email content is too large ([length])` | Email exceeds the 10 MB size limit | Reduce attachment size or host large files externally |
+| `452` | `Insufficient points error (accountId=..., availablePoints=...)` | Account balance too low to send | Contact EffiLink support to top up your account |
+
+## SMTP extensions with `X-Easeye-*` headers
+
+EffiLink supports custom SMTP headers that give you access to platform features — tracking, categorization, priority, and message expiry — without leaving your SMTP workflow.
+
+### `X-Easeye-API`
+
+Pass a JSON payload to configure tracking, categorization, campaign labeling, priority, and custom tracking domains.
+
+```text
+X-Easeye-API: {"category":"Registration","campaign":"registration email for new users","send_options":{"track_open":1,"track_click":1,"track_subscription":1,"custom_domain":"http://linktrace.test.com"},"priority":"low"}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `category` | string | Email category (_e.g. Registration_). **_Max length_**_:_ 100 bytes. **_Allowed characters_**: A‑Z, a‑z, 0‑9 |
+| `campaign` | string | Email task name. **_Max length_**: 100 bytes. **_Allowed characters_**: A‑Z, a‑z, 0‑9. |
+| `send_options.track_open` | int | `1`  enable open tracking |
+| `send_options.track_click` | int | `1`  enable click tracking.  **_Specific URLs_** can be excluded from tracking if needed,See [Email Tracking](/docs/email-tracking) |
+| `send_options.track_subscription` | int | Whether to add **_unsubscribe link_**. Add when value is `1`; do not add for other values. |
+| `send_options.custom_domain` | string | Custom domain used for tracking email links |
+| `send_options.priority` | string | `high`, `median`, or `low` (default: `low`) |
+
+### `X-Easeye-UniqueMsgID`
+
+A unique identifier for the message, used for deduplication and tracking. Maximum 50 bytes; alphanumeric characters and dashes only.
+
+```text
+X-Easeye-UniqueMsgID: order-confirm-1234-abc
+```
+
+### `X-Easeye-ExpirationDate`
+
+Set an expiry time for the message. If the email has not been delivered by this time, EffiLink will stop attempting delivery and return an expired status. Format: `yyyy-MM-dd HH:mm:ss` in UTC+8 (China Standard Time).
+
+```text
+X-Easeye-ExpirationDate: 2024-10-09 11:03:25
+```
+
+### Full example with `X-Easeye-*` headers
+
+```shellscript
+EHLO yourdomain.com
+AUTH LOGIN
+[base64 username]
+[base64 API key]
+MAIL FROM:<no-reply@yourdomain.com>
+RCPT TO:<user@example.com>
+DATA
+From: Your App <no-reply@yourdomain.com>
+To: user@example.com
+Subject: Welcome to EffiLink
+X-Easeye-API: {"category":"Onboarding","send_options":{"track_open":1,"track_click":1},"priority":"low"}
+X-Easeye-UniqueMsgID: welcome-user-5678
+Content-Type: text/html; charset=UTF-8
+
+<p>Welcome! Thanks for signing up.</p>
+```
+
+---
+
+## Security checklist

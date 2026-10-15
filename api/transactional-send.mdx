@@ -1,0 +1,165 @@
+---
+title: "Send a Single Transactional Email — EffiLink API"
+sidebarTitle: "Send Email"
+description: "Send a single personalized transactional email with optional scheduling, open/click tracking, file attachments, and saved template support."
+---
+
+## Overview
+
+Send a single transactional email to one recipient. You can supply raw HTML content or reference a saved template, personalize the message with dynamic tags, schedule delivery up to 72 hours in advance, track opens and clicks, and attach a file — all in one request.
+
+**Base URL:** `https://api.effilink.co`
+
+**Endpoint:** `POST /v5/transactional/mail/sends_customised`
+
+**Authentication:** `ApiKey` header
+
+---
+
+## Request Parameters
+
+<ParamField body="subject" type="string" required>
+  Email subject line.
+</ParamField>
+
+<ParamField body="content" type="string">
+  HTML email body content. Required if `templateName` is not provided.
+</ParamField>
+
+<ParamField body="templateName" type="string">
+  Name of an existing saved template. Takes priority over `content` when both are provided.
+</ParamField>
+
+<ParamField body="params" type="object">
+  Key-value pairs used to populate personalization tags in the format `{{tagName}}` within your `content` or template.
+
+  ```json
+  { "name": "Jane", "orderId": "ORD-5678" }
+  ```
+</ParamField>
+
+<ParamField body="senderMail" type="string" required>
+  Verified sender email address. Must be registered in your EffiLink account before use.
+</ParamField>
+
+<ParamField body="senderName" type="string">
+  Sender display name shown in the recipient's inbox. Maximum **200 bytes**.
+</ParamField>
+
+<ParamField body="replyTo" type="string">
+  Reply-to email address. Replies from recipients will be directed here instead of `senderMail`.
+</ParamField>
+
+<ParamField body="sendDate" type="string">
+  Scheduled send time in ISO 8601 UTC format (e.g. `2024-03-10T12:00:00Z`). Schedule up to **72 hours** in advance. Omit this field to send immediately.
+</ParamField>
+
+<ParamField body="to" type="object" required>
+  The single recipient of this email.
+
+  <Expandable title="to fields">
+    <ParamField body="email" type="string" required>
+      Recipient email address.
+    </ParamField>
+
+    <ParamField body="name" type="string">
+      Recipient display name.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="category" type="string">
+  Email category label for organizational and reporting purposes. Maximum **100 bytes**. Alphanumeric characters only.
+</ParamField>
+
+<ParamField body="campaign" type="string">
+  Campaign name for grouping emails in analytics. Maximum **100 bytes**. Alphanumeric characters only.
+</ParamField>
+
+<ParamField body="trackOpen" type="int">
+  Set to `1` to enable open tracking for this email.
+</ParamField>
+
+<ParamField body="trackClick" type="int">
+  Set to `1` to enable link click tracking. To exclude a specific link from tracking, add the `ef:disable-tracking` attribute to its anchor tag.
+</ParamField>
+
+<ParamField body="uniqueMsgID" type="string">
+  A unique message identifier for tracking and deduplication purposes. Maximum **50 bytes**.
+</ParamField>
+
+<ParamField body="attachment" type="object">
+  A single file to attach to the email. Only one attachment is supported per request.
+
+  <Expandable title="attachment fields">
+    <ParamField body="fileName" type="string" required>
+      The filename of the attachment, including its extension (e.g. `invoice.pdf`).
+    </ParamField>
+
+    <ParamField body="fileData" type="string" required>
+      Base64-encoded content of the file to attach.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  Set to `true` to run a test send. The API validates and processes the request normally but does not deliver the email.
+</ParamField>
+
+---
+
+## Response Fields
+
+<ResponseField name="code" type="int">
+  `200` on success. See [Error Codes](#error-codes) for failure values.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string (`""`) on success. Contains an error description on failure.
+</ResponseField>
+
+---
+
+## Error Codes
+
+| Code | Cause |
+| --- | --- |
+| `400` | Missing required parameter; invalid `sendDate` format; `category`, `campaign`, or `uniqueMsgID` exceeds length limit; invalid recipient address; sender name too long; invalid reply-to address; missing email content |
+| `403` | Sender address not registered; template not found; insufficient account credits |
+
+---
+
+## Example
+
+### Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/transactional/mail/sends_customised \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "subject": "Your order has shipped",
+    "content": "<p>Hello {{name}}, your order {{orderId}} has shipped!</p>",
+    "params": {"name": "Jane", "orderId": "ORD-5678"},
+    "senderMail": "noreply@yourdomain.com",
+    "senderName": "Your Store",
+    "to": {
+      "email": "jane@example.com",
+      "name": "Jane Smith"
+    },
+    "trackOpen": 1,
+    "trackClick": 1,
+    "category": "shipping",
+    "campaign": "order_confirmation"
+  }'
+```
+
+### Response
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```

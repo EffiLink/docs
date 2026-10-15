@@ -1,0 +1,224 @@
+---
+title: "Contact Lists API — Create, Search, and Delete Lists"
+sidebarTitle: "Contact Lists"
+description: "Add, search, and delete contact lists in EffiLink. Organize contacts into static or dynamic groups and paginate through all your lists."
+---
+
+## Authentication
+
+All endpoints accept either an `ApiKey` header or an `OAuth` header. See the [OAuth Endpoints](/api/oauth) page for token generation.
+
+---
+
+## Add List
+
+<ParamField path="POST" type="string">
+  `/v5/lists/add`
+</ParamField>
+
+Creates a new contact list with an optional description.
+
+### Request Body
+
+<ParamField body="listName" type="string" required>
+  Unique name for the new contact list.
+</ParamField>
+
+<ParamField body="listDescription" type="string">
+  A short description of the list's purpose or audience.
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  When `true`, the operation is simulated and no list is created.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/lists/add \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "listName": "VIP Customers",
+    "listDescription": "High-value customer segment"
+  }'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+---
+
+## Get Lists
+
+<ParamField path="POST" type="string">
+  `/v5/lists/get`
+</ParamField>
+
+Returns a paginated, optionally filtered collection of contact lists belonging to your account.
+
+### Request Body
+
+<ParamField body="search" type="string">
+  Filter lists by name. Returns all lists that contain this string.
+</ParamField>
+
+<ParamField body="listType" type="string">
+  Filter by list type:
+
+  - `"0"` — Dynamic lists (rule-based membership).
+  - `"1"` — Static lists (manually managed membership).
+</ParamField>
+
+<ParamField body="sort" type="string">
+  Sort field for results. Accepted values:
+
+  - `"CreateDate"` — Sort by creation date.
+  - `"ModifyDate"` — Sort by last modification date.
+</ParamField>
+
+<ParamField body="pageSize" type="int">
+  Number of lists to return per page. Defaults to `10`.
+</ParamField>
+
+<ParamField body="pageIndex" type="int">
+  One-based page number. Defaults to `1`.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+<ResponseField name="lists" type="array[object]">
+  Array of list records matching the query.
+
+  <Expandable title="list object">
+    <ResponseField name="Id" type="string">
+      Unique identifier for the list.
+    </ResponseField>
+
+    <ResponseField name="TeamId" type="string">
+      Identifier of the team that owns the list.
+    </ResponseField>
+
+    <ResponseField name="listName" type="string">
+      Human-readable name of the list.
+    </ResponseField>
+
+    <ResponseField name="ListStatus" type="int">
+      Current status of the list (e.g. `1` = active).
+    </ResponseField>
+
+    <ResponseField name="ListType" type="int">
+      `0` for dynamic lists; `1` for static lists.
+    </ResponseField>
+
+    <ResponseField name="ListFilters" type="string">
+      Filter conditions for dynamic lists. Present on dynamic lists (`ListType: 0`); empty or absent for static lists.
+    </ResponseField>
+
+    <ResponseField name="CreateUserId" type="int">
+      ID of the user who created the list.
+    </ResponseField>
+
+    <ResponseField name="CreateDate" type="string">
+      ISO 8601 timestamp of when the list was created.
+    </ResponseField>
+
+    <ResponseField name="ModifyDate" type="string">
+      ISO 8601 timestamp of the most recent update to the list.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="totalRecords" type="int">
+  Total number of lists matching the query across all pages.
+</ResponseField>
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/lists/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "search": "VIP",
+    "pageSize": 20,
+    "pageIndex": 1
+  }'
+```
+
+```json Response
+{
+  "code": 200,
+  "message": "",
+  "lists": [
+    {
+      "Id": "abc123",
+      "TeamId": "team001",
+      "listName": "VIP Customers",
+      "ListStatus": 1,
+      "ListType": 1,
+      "CreateUserId": 42,
+      "CreateDate": "2024-01-15T08:00:00.000Z",
+      "ModifyDate": "2025-03-10T14:30:00.000Z"
+    }
+  ],
+  "totalRecords": 1
+}
+```
+
+---
+
+## Delete List
+
+<ParamField path="POST" type="string">
+  `/v5/lists/delete`
+</ParamField>
+
+Permanently deletes a contact list by name. Contacts within the list are **not** deleted — only the list itself is removed.
+
+### Request Body
+
+<ParamField body="listName" type="string" required>
+  Name of the contact list to delete.
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  When `true`, the operation is simulated and no list is deleted.
+</ParamField>
+
+### Response
+
+<ResponseField name="code" type="int">
+  `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Empty string on success; an error description on failure.
+</ResponseField>
+
+```json Response
+{
+  "code": 200,
+  "message": ""
+}
+```

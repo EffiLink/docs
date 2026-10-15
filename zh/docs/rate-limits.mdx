@@ -1,0 +1,77 @@
+---
+title: "API 速率限制与 SMTP 限流"
+sidebarTitle: "速率限制"
+description: "了解 EffiLink 各端点的 Web API 速率限制和 SMTP 连接限流，沙箱模式同样会执行限流校验，也会返回 429，方便提前测限流逻辑"
+---
+
+速率限制用于保护 EffiLink 平台对所有用户的稳定性和公平性。平台强制执行两类限制：面向邮件协议投递的 **SMTP 限流**，以及针对 REST 调用按端点应用的 **Web API 速率限制**。触发任一限制都会导致您的请求被拒绝，直至速率窗口重置。
+
+## SMTP 速率限制
+
+若通过 EffiLink 的 SMTP 接口发送邮件，需遵循以下连接和消息大小约束：
+
+| 限制 | 值 |
+| --- | --- |
+| 最大并发连接数 | 100 |
+| 单封邮件（含正文及附件）最大容量 | 10 MB |
+
+<Note>
+  如需发送大于 10MB 的邮件，请联系 [EffiLink 客服](mailto:support@effilink.com) 讨论账户级别的方案。
+</Note>
+
+## Web API 速率限制
+
+REST API 限制按端点执行。根据端点不同，限制以每小时请求数、每秒请求数或两者组合的形式表达。
+
+| 端点 | 每小时 | 每秒 |
+| --- | :-: | :-: |
+| `/v5/transactional` | — | 10 |
+| `/v5/verified_senders` | 1,000 | — |
+| `/v5/contacts` | 7,200 | 2 |
+| `/v5/campaign` | 7,200 | 2 |
+| 其他所有端点 | 1,000 | — |
+
+- **每小时** 限制约束您在任意滚动的 60 分钟窗口内对该端点的请求总数。
+- **每秒** 限制约束瞬时突发速率，防止流量尖峰。
+- 若两者同时适用，则必须同时满足。
+
+## 处理 HTTP 429 Too Many Requests
+
+超出速率限制时，API 返回：
+
+```http
+HTTP/1.1 429 Too Many Requests
+```
+
+您的应用应优雅处理 `429` 响应，而不应视为致命错误。推荐的重试策略：
+
+1. **检测 429**：在每个响应中检查 HTTP 状态码。
+2. **退避**：重试前等待。可从较短延迟（例如 1 秒）开始，遇到连续 `429` 时按指数退避（例如 2 秒、4 秒、8 秒）。
+3. **遵守重置窗口**：若响应包含 `Retry-After` 头，则至少等待该秒数后再重试。
+4. **恢复**：速率窗口重置后恢复正常请求流量。
+
+```javascript
+// 示例：简单的指数退避
+async function sendWithRetry(payload, maxRetries = 5) {
+  let delay = 1000; // 起始 1 秒
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const res = await fetch('https://api.effilink.co/v5/sms/sends', {
+      method: 'POST',
+      headers: { 'ApiKey': 'YOUR_API_KEY', 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.status !== 429) return res;
+    await new Promise(r => setTimeout(r, delay));
+    delay *= 2; // 每次重试等待时间翻倍
+  }
+  throw new Error('已达最大重试次数');
+}
+```
+
+## 保持在限制内的建议
+
+- **批量发送**：`/v5/sms/sends` 端点单次请求最多接受 100 个收件人。将收件人合并可减少 API 调用总数。详见[批量个性化短信](/zh/docs/sms-batch)。
+- **将批量操作错峰执行**：若需高频调用（例如同步联系人或触发活动），请将其分摊到一段时间，避免一次性集中发起。
+- **缓存读接口响应**：对于 `/v5/verified_senders` 或 `/v5/contacts` 等端点，可将结果本地缓存，仅在数据变化时刷新，而非高频轮询。
+- **监控用量**：在应用层跟踪自己的请求速率，主动限流，而非被动应对 `429` 错误。
+- **谨慎使用 transactional 端点**：`/v5/transactional` 的每秒限制严格（10 QPS）。请对出站事务性消息进行排队并以可控速率发送，避免意外被拒。

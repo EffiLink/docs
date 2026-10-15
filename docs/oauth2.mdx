@@ -1,0 +1,115 @@
+---
+title: "Integrate EffiLink OAuth 2.0: Authorization Flow Guide"
+sidebarTitle: "OAuth 2.0"
+description: "Use EffiLink's OAuth 2.0 flow to obtain access tokens and make API requests on behalf of any EffiLink user from your third-party application."
+---
+
+OAuth 2.0 lets your application act on behalf of any EffiLink user — without ever handling their password. Instead of using your own credentials, your app guides the user through an authorization flow, receives a short-lived authorization code, and exchanges it for a permanent access token. This token is then attached to every API request you make on that user's behalf.
+
+## Prerequisites
+
+Before starting the OAuth flow, you must register an OAuth application in the EffiLink platform. Registration provides you with three credentials you will need throughout the flow:
+
+| Credential | Description |
+| --- | --- |
+| `client_id` | Unique identifier for your registered OAuth application. |
+| `client_secret` | Secret key that proves your app's identity when exchanging a code for a token. Keep this private. |
+| `redirect_uri` | The URL EffiLink will redirect the user to after they approve (or deny) access. Must match the value registered in your app settings exactly. |
+
+## Authorization flow
+
+<Steps>
+  <Step title="Build the authorization URL">
+    Direct the user to EffiLink's authorization endpoint. They will see an EffiLink-hosted page asking them to approve or deny access to your application.
+
+    ```text
+    GET https://api.effilink.co/v5/auth/oauth/authorize
+    ```
+
+    | Parameter | Value | Description |
+    | --- | --- | --- |
+    | `client_id` | Your app's client ID | Identifies your OAuth application. |
+    | `response_type` | `code` | Tells EffiLink to return an authorization code. |
+    | `redirect_uri` | URL-encoded callback URL | Must match the URI registered in your app settings. |
+    | `scope` | `All` | Grants full API access on behalf of the user. |
+
+    **Example request:**
+
+    ```bash
+    curl --request GET \
+      --url 'https://api.effilink.co/v5/auth/oauth/authorize?client_id=1751651162214168&response_type=code&redirect_uri=https%3A%2F%2Fapp.effilink.co%2FoauthCodeCallback&scope=All'
+    ```
+
+    After the user approves, EffiLink redirects them to your `redirect_uri` with an authorization code appended as a query parameter:
+
+    ```text
+    https://your-redirect-uri.com/callback?code=AUTHORIZATION_CODE
+    ```
+
+    <Warning>
+      The authorization code **expires in 5 minutes**. Exchange it for an access token immediately after receiving it.
+    </Warning>
+  </Step>
+  <Step title="Exchange the code for an access token">
+    Call the token endpoint with the authorization code to receive an access token.
+
+    ```text
+    GET https://api.effilink.co/v5/auth/oauth/token
+    ```
+
+    | Parameter | Value | Description |
+    | --- | --- | --- |
+    | `grant_type` | `authorization_code` | Specifies the OAuth grant type being used. |
+    | `client_id` | Your app's client ID | Identifies your OAuth application. |
+    | `client_secret` | Your app's client secret | Authenticates your application server-side. |
+    | `code` | Authorization code from Step 1 | The code received at your redirect URI. |
+
+    **Example request:**
+
+    ```bash
+    curl --request GET \
+      --url 'https://api.effilink.co/v5/auth/oauth/token?grant_type=authorization_code&client_id=1751651162214168&client_secret=768e04e13b5f4a3ca67de0a21b3ca7d5&code=ae3cae67d13b5fe0a21b3cae7d'
+    ```
+
+    **Example response:**
+
+    ```json
+    {
+      "code": 200,
+      "message": null,
+      "accessToken": "5cb089d6eafd49caa68c41b9be9af6f6",
+      "expiresIn": -1
+    }
+    ```
+
+    **Response fields:**
+
+    | Field | Type | Description |
+    | --- | --- | --- |
+    | `code` | integer | HTTP status code of the response. `200` indicates success. |
+    | `message` | string | Error message if the request failed; `null` on success. |
+    | `accessToken` | string | The access token to use in subsequent API requests. |
+    | `expiresIn` | integer | Seconds until the token expires. `-1` means the token is permanent and does not expire. |
+  </Step>
+  <Step title="Use the access token in API requests">
+    Add the `OAuth` header to every API request, using the access token obtained in Step 2.
+
+    ```bash
+    curl --request POST \
+      --url https://api.effilink.co/v5/transactional/mail/sends_customised \
+      --header 'Content-Type: application/json' \
+      --header 'OAuth: 5cb089d6eafd49caa68c41b9be9af6f6' \
+      --data '{"subject":"Hello"}'
+    ```
+
+    The `OAuth` header must be present on every request that requires user-level authorization. Requests with a missing or invalid token will receive a `401 Unauthorized` response.
+  </Step>
+</Steps>
+
+## Token expiry and renewal
+
+By default, EffiLink access tokens are **permanent** (`expiresIn: -1`). If a token is close to expiring (less than 5 minutes remaining), you can generate a new token by repeating the authorization flow. During the brief overlap period, **both the old and the new token are valid simultaneously**, allowing you to rotate tokens without downtime.
+
+<Tip>
+  Store access tokens securely — treat them with the same care as passwords. Never expose them in client-side code, URLs, or logs. Use a server-side secrets store or environment variable to manage them at runtime.
+</Tip>

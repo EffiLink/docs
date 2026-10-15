@@ -1,0 +1,160 @@
+---
+title: "发送邮件"
+sidebarTitle: "发送邮件"
+---
+
+## 概述
+
+向单个收件人发送一封事务性邮件。您可以提供原始 HTML 内容或引用已保存的模板，使用动态标签个性化邮件，提前最多 72 小时安排投递，跟踪打开和点击，以及附加文件，所有操作在一次请求中完成。
+
+`POST /v5/transactional/mail/sends_customised`
+
+---
+
+## 请求参数
+
+<ParamField body="subject" type="string" required>
+  邮件主题。
+</ParamField>
+
+<ParamField body="content" type="string">
+  HTML 邮件正文内容。如果未提供 `templateName`,则此字段为必填。
+</ParamField>
+
+<ParamField body="templateName" type="string">
+  已保存模板的名称。当同时提供 `content` 和 `templateName` 时，优先使用模板。
+</ParamField>
+
+<ParamField body="params" type="object">
+  键值对，用于填充 `content` 或模板中格式为 `{{tagName}}` 的个性化标签。
+
+  ```json
+  { "name": "Jane", "orderId": "ORD-5678" }
+  ```
+</ParamField>
+
+<ParamField body="senderMail" type="string" required>
+  已验证的发件人邮箱地址。使用前必须在您的 EffiLink 账户中完成注册。
+</ParamField>
+
+<ParamField body="senderName" type="string">
+  收件人收件箱中显示的发件人名称。最大 **200 字节**。
+</ParamField>
+
+<ParamField body="replyTo" type="string">
+  回复邮箱地址。收件人的回复将发送到此地址，而不是 `senderMail`。
+</ParamField>
+
+<ParamField body="sendDate" type="string">
+  定时发送时间，采用 ISO 8601 UTC 格式(例如 `2024-03-10T12:00:00Z`)。最多可提前 **72 小时** 安排。省略此字段则立即发送。
+</ParamField>
+
+<ParamField body="to" type="object" required>
+  此邮件的单个收件人。
+
+  <Expandable title="to 字段">
+    <ParamField body="email" type="string" required>
+      收件人邮箱地址。
+    </ParamField>
+
+    <ParamField body="name" type="string">
+      收件人显示名称。
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="category" type="string">
+  邮件分类标签，用于组织和报表。最大 **100 字节**。仅限字母数字字符。
+</ParamField>
+
+<ParamField body="campaign" type="string">
+  用于在分析中分组邮件的营销活动名称。最大 **100 字节**。仅限字母数字字符。
+</ParamField>
+
+<ParamField body="trackOpen" type="int">
+  设置为 `1` 以启用此邮件的打开跟踪。
+</ParamField>
+
+<ParamField body="trackClick" type="int">
+  设置为 `1` 以启用链接点击跟踪。若要排除某个链接不被跟踪，请在其 anchor 标签上添加 `ef:disable-tracking` 属性。
+</ParamField>
+
+<ParamField body="uniqueMsgID" type="string">
+  用于跟踪和去重的唯一消息标识符。最大 **50 字节**。
+</ParamField>
+
+<ParamField body="attachment" type="object">
+  要附加到邮件的单个文件。每次请求仅支持一个附件。
+
+  <Expandable title="attachment 字段">
+    <ParamField body="fileName" type="string" required>
+      附件文件名,包含扩展名(例如 `invoice.pdf`)。
+    </ParamField>
+
+    <ParamField body="fileData" type="string" required>
+      要附加文件的 Base64 编码内容。
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  设置为 `true` 进行测试发送。API 会正常验证和处理请求，但不会实际投递邮件。
+</ParamField>
+
+---
+
+## 响应字段
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。失败值请参见[错误代码](#error-codes)。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为空字符串(`""`)。失败时包含错误描述。
+</ResponseField>
+
+---
+
+## 错误代码
+
+| 代码 | 原因 |
+| --- | --- |
+| `400` | 缺少必填参数;`sendDate` 格式无效;`category`、`campaign` 或 `uniqueMsgID` 超出长度限制;收件人地址无效;发件人名称过长;回复地址无效;缺少邮件内容 |
+| `403` | 发件人地址未注册;模板未找到;账户余额不足 |
+
+---
+
+## 示例
+
+### 请求
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/transactional/mail/sends_customised \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "subject": "您的订单已发货",
+    "content": "<p>您好 {{name}},您的订单 {{orderId}} 已发货!</p>",
+    "params": {"name": "Jane", "orderId": "ORD-5678"},
+    "senderMail": "noreply@yourdomain.com",
+    "senderName": "Your Store",
+    "to": {
+      "email": "jane@example.com",
+      "name": "Jane Smith"
+    },
+    "trackOpen": 1,
+    "trackClick": 1,
+    "category": "shipping",
+    "campaign": "order_confirmation"
+  }'
+```
+
+### 响应
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```

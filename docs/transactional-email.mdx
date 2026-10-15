@@ -1,0 +1,190 @@
+---
+title: "Send Transactional Emails with EffiLink API"
+sidebarTitle: "Transactional Email"
+description: "Send triggered, one-to-one emails like receipts, password resets, and alerts using the EffiLink transactional email REST API."
+---
+
+Transactional emails are system-triggered messages sent to a single recipient in response to a user action or event. Common use cases include order confirmations, password reset links, shipping notifications, account verification emails, and any other time-sensitive, personalized message that a user expects to receive.
+
+The EffiLink transactional email endpoint gives you full control over content, scheduling, tracking, and deliverability for every individual message you send.
+
+---
+
+## Quick start
+
+Send a single transactional email with a `POST` request to `/v5/transactional/mail/sends_customised`.
+
+```bash
+curl -X POST https://api.effilink.co/v5/transactional/mail/sends_customised \
+  -H "ApiKey: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "Your order has shipped",
+    "content": "<p>Hi Jane, your order #1234 is on its way!</p>",
+    "senderMail": "no-reply@yourdomain.com",
+    "senderName": "Your Store",
+    "to": {
+      "email": "jane.doe@example.com",
+      "name": "Jane Doe"
+    }
+  }'
+```
+
+A successful response returns:
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+<Note>
+  Your `senderMail` address must be registered and verified in your EffiLink account before you can send. Unregistered senders return a `403` error.
+</Note>
+
+---
+
+## Using templates and personalization
+
+Instead of inlining HTML in every request, you can store reusable templates in EffiLink and reference them by name. Pass the template name in `templateName` and supply dynamic values through the `params` object using personalization tags.
+
+```bash
+curl -X POST https://api.effilink.co/v5/transactional/mail/sends_customised \
+  -H "ApiKey: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "templateName": "order-shipped",
+    "params": {
+      "firstName": "Jane",
+      "orderNumber": "1234",
+      "trackingUrl": "https://track.example.com/1234"
+    },
+    "senderMail": "no-reply@yourdomain.com",
+    "senderName": "Your Store",
+    "to": {
+      "email": "jane.doe@example.com",
+      "name": "Jane Doe"
+    }
+  }'
+```
+
+- `templateName` takes **priority over** any `content` field you include in the same request.
+- Personalization tags in your template (e.g. `{{firstName}}`) are replaced with the values you provide in `params`.
+- If neither `content` nor `templateName` is supplied, the request returns a `400` error.
+
+---
+
+## Scheduling a send
+
+Set `sendDate` to an ISO 8601 UTC timestamp to deliver the email at a specific time — up to **72 hours** in the future. Leave `sendDate` empty (or omit it) to send immediately.
+
+```json
+{
+  "sendDate": "2024-06-15T09:00:00Z"
+}
+```
+
+<Warning>
+  `sendDate` must be in valid ISO 8601 UTC format. Malformed timestamps return a `400` error. The maximum allowed scheduling window is 72 hours from the time of the request.
+</Warning>
+
+---
+
+## Attaching a file
+
+Include a single file attachment using the `attachment` object. File content must be **base64-encoded**.
+
+```json
+{
+  "attachment": {
+    "fileName": "invoice-1234.pdf",
+    "fileData": "JVBERi0xLjQKJ..."
+  }
+}
+```
+
+<Note>
+  Only one attachment is supported per transactional email request. For multiple files, consider hosting them and linking from the email body. The total email size limit over SMTP is 10 MB.
+</Note>
+
+---
+
+## Batch sending with `messageVersions`
+
+When you need to send up to **100 personalized versions** of the same email in a single API call, use the `messageVersions` array. Each version can target up to 20 recipients and override the global subject, content, template, or params.
+
+```go
+curl -X POST https://api.effilink.co/v5/transactional/mail/sends_customised \
+  -H "ApiKey: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "senderMail": "no-reply@yourdomain.com",
+    "senderName": "Your Store",
+    "subject": "Your order update",
+    "templateName": "order-update",
+    "messageVersions": [
+      {
+        "to": [{ "email": "alice@example.com", "name": "Alice" }],
+        "params": { "firstName": "Alice", "orderNumber": "1001" }
+      },
+      {
+        "to": [{ "email": "bob@example.com", "name": "Bob" }],
+        "params": { "firstName": "Bob", "orderNumber": "1002" },
+        "subject": "Bob, your order update is here"
+      }
+    ]
+  }'
+```
+
+**Priority rules when using `messageVersions`:**
+
+| Field | Priority |
+| --- | --- |
+| `messageVersions[].templateName` | Highest (overrides global templateName and content) |
+| `messageVersions[].content` | High (overrides global content) |
+| `messageVersions[].subject` | Version-level (overrides global subject) |
+| `messageVersions[].params` | Version-level (overrides matching keys in global params) |
+| Global `templateName` / `content` | Fallback |
+
+Each version also supports `cc` and `bcc` arrays (up to 20 addresses each). See the [API reference](/api/transactional-batch) for the full `messageVersions` schema.
+
+---
+
+## Tracking opens and clicks
+
+Enable engagement tracking by adding `trackOpen` and `trackClick` to your request:
+
+```json
+{
+  "trackOpen": 1,
+  "trackClick": 1
+}
+```
+
+- `trackOpen: 1` — EffiLink inserts a transparent tracking pixel to detect when the email is opened.
+- `trackClick: 1` — All links in the email are rewritten through EffiLink's click-tracking service.
+
+To **exclude a specific link** from click tracking, add the `ef:disable-tracking` attribute to the anchor tag:
+
+```html
+<a href="https://example.com/unsubscribe" ef:disable-tracking>Unsubscribe</a>
+```
+
+For more details on tracking and consuming event data via webhooks, see [Email Tracking](/docs/email-tracking).
+
+---
+
+## Common errors
+
+| Code | Cause | Resolution |
+| --- | --- | --- |
+| `400` | Missing required parameter (`subject`, `senderMail`, `to`, and `content` or `templateName`) | Check that all required fields are present |
+| `400` | `sendDate` format is invalid | Use ISO 8601 UTC format, e.g. `2024-06-15T09:00:00Z` |
+| `400` | `category`, `campaign`, or `uniqueMsgID` exceeds max length | `category` and `campaign` max 100 bytes; `uniqueMsgID` max 50 bytes |
+| `400` | `senderName` exceeds 200 bytes | Shorten the display name |
+| `400` | Invalid `replyTo` address | Verify the reply-to email address format |
+| `400` | No content provided | Include either `content` or `templateName` |
+| `403` | Sender address not registered | Register and verify `senderMail` in your EffiLink dashboard |
+| `403` | Template not found | Confirm the `templateName` exists in your account |
+| `403` | Insufficient credits | Top up your account balance |

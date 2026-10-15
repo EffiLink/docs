@@ -1,0 +1,116 @@
+---
+title: "Send Personalized Batch SMS with EffiLink"
+sidebarTitle: "Batch SMS"
+description: "Send up to 100 individually personalized SMS messages in a single API call using global templates, per-recipient overrides, and dynamic tag placeholders."
+---
+
+Batch personalized SMS lets you send up to 100 tailored messages in a single `POST /v5/sms/sends` request. Instead of making one API call per recipient, you define a global template once and selectively override the content, template name, or personalization tags for any individual recipient. This reduces API overhead and keeps your messaging logic centralized.
+
+## How batch SMS works
+
+Every batch request is built around two layers:
+
+1. **Global layer** — A default `content` string or `templateName`, plus optional `params` tag values applied to every recipient who doesn't have their own override.
+2. **Per-recipient layer** — Individual entries in `toList` can carry their own `content`, `templateName`, or `params`, which take precedence over the global values for that specific recipient.
+
+### Parameter priority (highest → lowest)
+
+When EffiLink assembles a message for a given recipient, it resolves content in this order:
+
+| Priority | Field | Scope |
+|----------|-------|-------|
+| 1 (highest) | `toList[].templateName` | Per-recipient template |
+| 2 | `toList[].content` | Per-recipient content string |
+| 3 | `templateName` (top-level) | Global template |
+| 4 (lowest) | `content` (top-level) | Global content string |
+
+For tag values (`params`), per-recipient `toList[].params` override the top-level `params` for matching keys.
+
+## Using `{{tag}}` placeholders
+
+Include `{{tagName}}` tokens in any `content` string to inject dynamic values at send time. Supply the corresponding values in the `params` object, where each key matches a tag name.
+
+```json
+{
+  "content": "[EffiLink] Hi {{name}}, your code is {{code}}.",
+  "params": {"name": "User", "code": "000000"}
+}
+```
+
+A recipient with `"params": {"name": "Alice", "code": "987654"}` in their `toList` entry will receive:
+> `[EffiLink] Hi Alice, your code is 987654.`
+
+While a recipient with no per-recipient params falls back to the global defaults:
+> `[EffiLink] Hi User, your code is 000000.`
+
+## Send a personalized batch
+
+**Endpoint:** `POST /v5/sms/sends`
+
+### cURL example
+
+The example below demonstrates all four recipient scenarios in one request:
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/sms/sends \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "content": "[YourBrand] Global message: {{code}}",
+    "params": {"code": "DEFAULT"},
+    "toList": [
+      {
+        "mobile": "18800006666"
+      },
+      {
+        "mobile": "18800008888",
+        "content": "[YourBrand] Custom message for 8888"
+      },
+      {
+        "mobile": "18800009999",
+        "templateName": "verification_template"
+      },
+      {
+        "mobile": "18800000000",
+        "templateName": "verification_template",
+        "params": {"code": "789012"}
+      }
+    ]
+  }'
+```
+
+| Recipient | Effective content | Why |
+|-----------|------------------|-----|
+| `18800006666` | `[YourBrand] Global message: DEFAULT` | No overrides — global `content` + global `params` used. |
+| `18800008888` | `[YourBrand] Custom message for 8888` | Per-recipient `content` overrides global `content`. |
+| `18800009999` | Rendered from `verification_template` | Per-recipient `templateName` takes top priority. |
+| `18800000000` | Rendered from `verification_template` with `code=789012` | Per-recipient `templateName` + per-recipient `params`. |
+
+### Request parameters
+
+#### Top-level fields
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `content` | string | Conditional | Global SMS content. Supports `{{tag}}` placeholders. Required if `templateName` is not provided. |
+| `templateName` | string | Conditional | Name of a pre-registered global SMS template. Takes priority over top-level `content` when both are present. |
+| `params` | object | No | Key-value pairs for `{{tag}}` substitution applied globally to all recipients. |
+| `toList` | array[object] | ✅ Yes | List of recipient objects. Maximum 100 entries per request. |
+| `sandboxMode` | boolean | No | Set to `true` to validate the request without delivering messages. |
+
+#### `toList` entry fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `mobile` | string | ✅ Yes | The recipient's phone number. |
+| `content` | string | No | Per-recipient SMS content. Overrides the global `content` for this recipient. Supports `{{tag}}` placeholders. |
+| `templateName` | string | No | Per-recipient template name. Highest priority — overrides both global `content` and global `templateName`. |
+| `params` | object | No | Per-recipient tag values. Keys matching the global `params` take precedence for this recipient. |
+
+## Tips
+
+- **Keep batches under 100 entries.** The API accepts up to 100 `toList` entries per request. Split larger audiences across multiple requests.
+- **Use templates for regulated content.** If your SMS content is subject to carrier registration requirements, prefer `templateName` over inline `content` to ensure only approved copy is sent.
+- **Test with `sandboxMode`.** Add `"sandboxMode": true` to your payload to dry-run the entire batch without dispatching any messages.
+- **Minimize redundant overrides.** Only populate per-recipient fields when the value actually differs from the global default — this keeps payloads lean and easier to debug.

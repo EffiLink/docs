@@ -1,0 +1,83 @@
+---
+title: "Send Your First Email with EffiLink: Quick Start Guide"
+sidebarTitle: "Quick Start"
+description: "Follow this step-by-step guide to create an EffiLink account, get your API key, and send your first transactional email in under 5 minutes."
+---
+
+This guide walks you through creating an EffiLink account, obtaining an API key, setting up a verified sender, and making your first API call to send a transactional email. You'll be sending in under 5 minutes.
+
+<Steps>
+  <Step title="Create an account">
+    Sign up at [app.effilink.co](https://app.effilink.co). Your account is free to create — no credit card required for trial access.
+  </Step>
+
+  <Step title="Get your API key">
+    1. Log in to your EffiLink account.
+    2. Click **Settings** in the top-right corner.
+    3. Navigate to **API Configuration → API Keys**.
+    4. Click **Create API Key** in the top-right.
+    5. **Save the generated key immediately** — the second half of the key is only shown once.
+
+    <Warning>
+    Store your API key in a secure secrets manager. Never commit it to source control or expose it in client-side code.
+    </Warning>
+  </Step>
+
+  <Step title="Add a verified sender">
+    Before you can send email, you must register the sending address or domain:
+    1. Go to **Settings → Verified Senders**.
+    2. Add your sending email address (e.g. `noreply@yourdomain.com`).
+    3. Complete domain verification by adding the DNS records EffiLink provides (SPF, DKIM, DMARC).
+
+    <Info>
+    You can start testing with sandbox mode while domain verification is in progress. See [Sandbox Mode](/docs/sandbox-mode).
+    </Info>
+  </Step>
+
+  <Step title="Send your first email">
+    With your API key and verified sender ready, make this API call:
+
+    ```bash
+    curl --request POST \
+      --url https://api.effilink.co/v5/transactional/mail/sends_customised \
+      --header 'Content-Type: application/json' \
+      --header 'ApiKey: YOUR_API_KEY' \
+      --data '{
+        "subject": "Welcome to our platform",
+        "content": "<p>Hello! Thanks for signing up.</p>",
+        "senderMail": "noreply@yourdomain.com",
+        "senderName": "Your Company",
+        "to": {
+          "email": "recipient@example.com",
+          "name": "Recipient Name"
+        }
+      }'
+    ```
+
+    A successful response looks like:
+
+    ```json
+    {
+      "code": 200,
+      "message": ""
+    }
+    ```
+  </Step>
+</Steps>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Transactional Email" icon="envelope" href="/docs/transactional-email">
+    Explore all parameters for sending single and batch transactional emails.
+  </Card>
+  <Card title="Campaign Email" icon="bullhorn" href="/docs/campaign-email">
+    Learn how to send marketing campaigns to contact lists.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/docs/webhooks">
+    Receive real-time delivery and engagement events.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/transactional-send">
+    Full endpoint reference documentation.
+  </Card>
+</CardGroup>

@@ -1,0 +1,138 @@
+---
+title: "联系组"
+sidebarTitle: "联系组"
+description: "了解如何在 EffiLink 中创建、搜索和删除联系组。将受众分组以实现精准营销发送和组管理。"
+---
+
+联系人组（也称为列表）是您 EffiLink 账户中具名的联系人集合。它们让您可以对受众进行细分，从而将营销活动精确送达合适的人群。例如：用于每周邮件推送的 “Newsletter Subscribers” 组，或用于专属优惠的 “VIP Customers” 组。组既可以在控制台手动创建，也可以通过 API 编程式创建。
+
+---
+
+## 创建组
+
+`POST /v5/lists/add`
+
+在您的账户中创建一个新的联系人组。创建后，您可以通过[联系人 API](/zh/docs/contacts)向其中添加联系人，或在批量导入中按名称引用它。
+
+| 参数 | 类型 | 必需 | 说明 |
+| --- | --- | --- | --- |
+| `listName` | string | 是 | 账户内唯一的组名称。 |
+| `listDescription` | string | 否 | 简要描述组用途。 |
+| `sandboxMode` | boolean | 否 | 为 `true` 时仅模拟创建，不保存数据。 |
+
+**示例请求**
+
+```json
+{
+  "listName": "Newsletter Subscribers",
+  "listDescription": "通过网站注册表单加入的联系人"
+}
+```
+
+**示例响应**
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+<Note>
+  组名称在账户内必须唯一。若尝试创建同名组，API 会返回错误。要在批量导入时避免这一问题，可直接在导入请求中传入 `listName`；如组不存在，EffiLink 会自动创建。
+</Note>
+
+---
+
+## 检索组
+
+`POST /v5/lists/get`
+
+以分页方式返回账户中的联系人组。可选过滤器可按名称或组类型缩小结果范围，`sort` 参数用于控制排序。
+
+| 参数 | 类型 | 必需 | 说明 |
+| --- | --- | --- | --- |
+| `search` | string | 否 | 过滤名称中包含该字符串的组。 |
+| `listType` | int | 否 | `0` = 动态组，`1` = 静态组。省略则返回两种类型。 |
+| `sort` | string | 否 | 排序方式：`CreateDate` 或 `ModifyDate`（降序）。 |
+| `pageSize` | int | 否 | 每页数量，默认 `10`。 |
+| `pageIndex` | int | 否 | 页码，从 `1` 开始。默认 `1`。 |
+
+**示例请求**
+
+```json
+{
+  "search": "Newsletter",
+  "listType": 1,
+  "sort": "CreateDate",
+  "pageSize": 20,
+  "pageIndex": 1
+}
+```
+
+**响应字段**
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `Id` | string | 组唯一标识。 |
+| `TeamId` | string | 拥有该组的团队 ID。 |
+| `ListName` | string | 组名 |
+| `ListStatus` | int | 组状态（`1` = 正常）。 |
+| `ListType` | int | `0` = 动态，`1` = 静态。 |
+| `ListFilters` | string | 动态组的过滤规则，仅动态组有此字段。 |
+| `CreateUserId` | int | 创建组的用户 ID。 |
+| `CreateDate` | datetime | 组创建时间。 |
+| `ModifyDate` | datetime | 最近一次修改时间。 |
+| `totalRecords` | int | 组中当前联系人总数。 |
+
+---
+
+## 删除组
+
+`POST /v5/lists/delete`
+
+永久删除某个联系人组。组成员本身 **不会** 从账户中删除，仅移除该组分组。
+
+| 参数 | 类型 | 必需 | 说明 |
+| --- | --- | --- | --- |
+| `listName` | string | 是 | 要删除的组名称。 |
+| `sandboxMode` | boolean | 否 | 为 `true` 时仅模拟删除，不实际移除数据。 |
+
+**示例请求**
+
+```json
+{
+  "listName": "Old Campaign List"
+}
+```
+
+<Warning>
+  删除组不可撤销。任何以该组为目标、已排程或进行中的营销活动都可能受影响。删除前请确认没有活跃的营销活动引用该组。
+</Warning>
+
+---
+
+## 在营销发送中使用组
+
+在 EffiLink 中启动邮件营销活动时，您需要指定一个或多个联系人组作为受众。EffiLink 会在发送时解析每个组的全部成员，将营销活动送达每一个符合条件的联系人。您可以针对单个组，也可以合并多个组以获得更大覆盖面。
+
+组也可作为[批量导入端点](/zh/docs/contacts#批量导入联系人)的目标：设置 `listName` 参数，导入的联系人会自动加入其中。
+
+---
+
+## 静态组与动态组
+
+EffiLink 支持两种组类型，可通过 API 响应中的 `ListType` 字段区分：
+
+| 类型 | 值 | 行为 |
+| --- | --- | --- |
+| **静态** | `1` | 成员关系固定。通过 API 或控制台显式添加或移除联系人。适合一次性营销活动和精心策划的分段。 |
+| **动态** | `0` | 成员关系基于规则，联系人满足或不再满足定义的条件时会自动进出。适用于持续性的生命周期分段（例如“最近 30 天内活跃”）。 |
+
+通过 API 创建组（`POST /v5/lists/add`）时，默认创建为 **静态组**。带自定义规则的动态组须在 EffiLink 控制台中配置。
+
+---
+
+## 平台配额
+
+您的 EffiLink 账户最多支持 **300 个联系人组**。达到上限后，需要先删除未使用的组才能创建新组。要查看当前组并识别可清理的对象，可使用较大的 `pageSize` 调用 `POST /v5/lists/get` 并分页遍历所有结果。

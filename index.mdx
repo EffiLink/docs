@@ -1,0 +1,74 @@
+---
+title: "EffiLink API Docs: Send Email, SMS, and Track Events"
+sidebarTitle: "Home"
+description: "EffiLink developer docs: send transactional emails, run marketing campaigns, deliver SMS, and track real-time engagement via one REST API."
+---
+
+EffiLink is a cloud messaging platform that lets you send transactional and marketing emails, bulk SMS, and track every delivery and engagement event in real time. Whether you're integrating via the REST API, SMTP, or OAuth, you can be sending in minutes.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/docs/quickstart">
+    Make your first API call and send an email in under 5 minutes.
+  </Card>
+  <Card title="Authentication" icon="key" href="/docs/authentication">
+    Learn how to use API Keys and OAuth 2.0 to authenticate requests.
+  </Card>
+  <Card title="Transactional Email" icon="envelope" href="/docs/transactional-email">
+    Send order confirmations, password resets, and triggered messages.
+  </Card>
+  <Card title="Campaign Email" icon="bullhorn" href="/docs/campaign-email">
+    Build and send marketing campaigns to your contact lists.
+  </Card>
+  <Card title="SMS" icon="mobile" href="/docs/sms-send">
+    Deliver transactional and promotional SMS to any mobile number.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/docs/webhooks">
+    Receive real-time delivery and engagement events in your system.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/transactional-send">
+    Full endpoint reference with request/response schemas.
+  </Card>
+  <Card title="Rate Limits" icon="gauge" href="/docs/rate-limits">
+    Understand API rate limits and platform quotas.
+  </Card>
+</CardGroup>
+
+## Get started in 4 steps
+
+<Steps>
+  <Step title="Create an EffiLink account">
+    Sign up at [app.effilink.co](https://app.effilink.co) for free. No credit card required to get started.
+  </Step>
+  <Step title="Get your API Key">
+    Go to **Settings → API Configuration → API Keys** in the EffiLink dashboard to generate your API key. Store it securely — part of the key is only shown once.
+  </Step>
+  <Step title="Add a verified sender">
+    Add and verify your sending domain or email address in **Settings → Verified Senders** before making your first send.
+  </Step>
+  <Step title="Send your first message">
+    Call `POST /v5/transactional/mail/sends_customised` with your API key in the `ApiKey` header. Check the [Quick Start guide](/docs/quickstart) for a complete example.
+  </Step>
+</Steps>
+
+## Explore by use case
+
+<CardGroup cols={3}>
+  <Card title="Transactional Email" icon="paper-plane" href="/docs/transactional-email">
+    Triggered messages like receipts and alerts
+  </Card>
+  <Card title="Marketing Campaigns" icon="chart-line" href="/docs/campaign-email">
+    Newsletters and promotional emails
+  </Card>
+  <Card title="A/B Testing" icon="flask" href="/api/campaign-abtest">
+    Optimize campaigns with split testing
+  </Card>
+  <Card title="Batch SMS" icon="comments" href="/docs/sms-batch">
+    Personalized SMS at scale
+  </Card>
+  <Card title="Contact Management" icon="address-book" href="/docs/contacts">
+    Import and manage your audience
+  </Card>
+  <Card title="Sandbox Mode" icon="vial" href="/docs/sandbox-mode">
+    Test integrations without sending real messages
+  </Card>
+</CardGroup>

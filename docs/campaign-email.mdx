@@ -1,0 +1,159 @@
+---
+title: "Send Marketing Campaign Emails with EffiLink"
+sidebarTitle: "Campaign Email"
+description: "Create and send bulk marketing emails to segmented contact lists using EffiLink's campaign API with scheduling and exclusion list support."
+---
+
+Marketing campaign emails are bulk messages sent to one or more contact lists — newsletters, product announcements, promotional offers, re-engagement sequences, and similar outbound communications. Unlike transactional email, campaign sends are audience-driven: you define _who_ receives the message by targeting named contact lists in your EffiLink account.
+
+The `/v5/campaign/mail/sends` endpoint lets you compose a campaign, target lists, apply exclusions, schedule delivery, and optionally save a draft without sending — all through a single API call.
+
+---
+
+## Workflow overview
+
+Before sending a campaign, you need contacts organised into lists inside EffiLink. The typical workflow is:
+
+```text
+Import contacts → Assign to contact lists → Send campaign targeting those lists
+```
+
+1. **Import contacts** — Upload or sync your contacts into EffiLink. See [Contacts](/docs/contacts) for how to create and manage contact lists.
+2. **Target lists with `sendListNames`** — Specify one or more list names to receive the campaign.
+3. **Compose and send** — Provide your email content (or a template), set a sender, and call the endpoint.
+
+---
+
+## Send a campaign
+
+```json
+curl -X POST https://api.effilink.co/v5/campaign/mail/sends \
+  -H "ApiKey: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mailName": "June Newsletter",
+    "senderMail": "hello@yourdomain.com",
+    "senderName": "Your Brand",
+    "subject": "What'\''s new in June",
+    "content": "<h1>Hello!</h1><p>Here is what'\''s new this month...</p>",
+    "sendListNames": ["newsletter-subscribers"],
+    "trackOpen": 1,
+    "trackClick": 1
+  }'
+```
+
+A successful response returns:
+
+```json
+{
+  "code": 200,
+  "message": "",
+  "id": 1120,
+  "guid": "915cb709ac96418495fcf4f666f15c0d"
+}
+```
+
+### Required parameters
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `mailName` | string | Unique task name for this campaign send (max 200 bytes) |
+| `senderMail` | string | Verified sender email address |
+| `sendListNames` | array | One or more target contact list names (required unless `onlySave` is `true`) |
+
+### Optional parameters
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `senderName` | string | Sender display name |
+| `subject` | string | Email subject line |
+| `content` | string | HTML email body |
+| `replyTo` | string | Reply-to email address |
+| `attachment` | object | `{fileName, fileData}` — single base64-encoded file |
+| `languageCode` | string | Recipient language: `zh-cn`, `en`, `ja`, `ko`, `de`, `tt`, `es`, `zh-tw`, `ar`, `pt-br`, `id` |
+| `marketName` | string | Associate this send with a marketing activity |
+| `subscriptName` | string | Associate with a subscription |
+| `projectCode` | string | Project code; auto-creates the project if it doesn't exist |
+| `editorType` | string | Editor type for UI: `CLASSIC` or `DRAG` (default: `DRAG`) |
+| `sandboxMode` | boolean | `true` to validate without sending (see [Sandbox Mode](/docs/sandbox-mode)) |
+
+---
+
+## Scheduling a campaign
+
+Set `sendDate` to an ISO 8601 UTC timestamp to schedule the campaign for future delivery. Omit or leave empty to send immediately.
+
+```json
+{
+  "sendDate": "2024-07-01T08:00:00Z"
+}
+```
+
+<Note>
+  A/B test campaigns can be scheduled up to **30 days** in the future. Standard campaign sends should be scheduled as close to your intended delivery time as practical.
+</Note>
+
+---
+
+## Saving a draft without sending
+
+Pass `onlySave: true` to save the campaign configuration without dispatching any emails. This is useful for building drafts via the API for later review or launch via the EffiLink dashboard.
+
+```json
+{
+  "mailName": "July Sale Campaign",
+  "senderMail": "promo@yourdomain.com",
+  "subject": "Big July Sale — Up to 50% off",
+  "content": "<p>Shop our biggest sale of the year.</p>",
+  "onlySave": true
+}
+```
+
+When `onlySave` is `true`, `sendListNames` is not required.
+
+---
+
+## Excluding contacts with `repelListNames`
+
+Use `repelListNames` to specify one or more contact lists whose members should be **excluded** from receiving the campaign, even if they also appear in a targeted list. This is useful for suppressing recently-converted customers, unsubscribed users, or any segment you want to protect from a particular send.
+
+```json
+{
+  "sendListNames": ["all-subscribers"],
+  "repelListNames": ["recent-purchasers", "unsubscribed"]
+}
+```
+
+Exclusion is applied server-side before sending — contacts on a repel list will not receive the email regardless of overlap with `sendListNames`.
+
+---
+
+## A/B testing
+
+EffiLink supports A/B testing for campaign emails, allowing you to compare subject lines, content variants, or sender names across a portion of your audience before sending the winning variant to the remainder.
+
+A/B test parameters are configured at the campaign level. For the full schema — including split percentages, winning criteria, and wait periods — refer to the [Campaign Sends API reference](/api/campaign-abtest).
+
+---
+
+## Attaching a file
+
+Attach a single file to your campaign email using the `attachment` object. File content must be **base64-encoded**.
+
+```json
+{
+  "attachment": {
+    "fileName": "june-catalog.pdf",
+    "fileData": "JVBERi0xLjQKJ..."
+  }
+}
+```
+
+---
+
+## Next steps
+
+- [Manage contact](/docs/contacts) — Import and segment your audience
+- [Campaign Sends API reference](/api/campaign-sends) — Full parameter schema, A/B test options, and response details
+- [Sandbox Mode](/docs/sandbox-mode) — Validate your campaign request without sending
+- [Email Tracking](/docs/email-tracking) — Track opens and clicks for your campaign

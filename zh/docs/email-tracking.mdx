@@ -1,0 +1,138 @@
+---
+title: "追踪邮件打开和点击"
+sidebarTitle: "邮件追踪"
+description: "在事务性和营销邮件中启用打开和点击追踪，并使用唯一消息 ID 进行去重。"
+---
+
+EffiLink 可以跟踪收件人何时打开您的邮件以及点击了其中的哪些链接。互动数据会实时回流到您的账户，并可通过 webhook 推送，为您提供理解营销效果、排查投递问题和驱动下游自动化所需的洞察。
+
+跟踪功能同时适用于 REST API 与 SMTP 集成，可按请求逐条启用。
+
+---
+
+## 跟踪打开
+
+当收件人的邮件客户端加载 EffiLink 嵌入邮件正文的透明跟踪像素时，会记录一次 **打开** 事件。
+
+### REST API
+
+在请求体中将 `trackOpen` 设为 `1`：
+
+```json
+{
+  "senderMail": "hello@yourdomain.com",
+  "to": { "email": "user@example.com" },
+  "subject": "您的每周更新",
+  "content": "<p>本周动态如下……</p>",
+  "trackOpen": 1
+}
+```
+
+### SMTP
+
+在 `X-Easeye-API` 请求头中将 `track_open` 设为 `1`：
+
+```text
+X-Easeye-API: {"send_options":{"track_open":1}}
+```
+
+<Note>
+  打开跟踪依赖图片加载。屏蔽远程图片的收件人或使用纯文本视图的用户，即使阅读了邮件也不会产生打开事件。打开数应作为下限估算，而非精确数据。
+</Note>
+
+---
+
+## 跟踪点击
+
+当收件人点击邮件中的链接时会记录一次 点击 事件。EffiLink 解析邮件 HTML，扫描全部`<a href="真实目标URL">`，把`href`替换成 EffiLink 跟踪服务地址，原始目标 URL 编码作为参数埋入跟踪链接。
+
+### REST API
+
+在请求体中将 `trackClick` 设为 `1`：
+
+```json
+{
+  "trackOpen": 1,
+  "trackClick": 1
+}
+```
+
+### SMTP
+
+在 `X-Easeye-API` 请求头的 `send_options` 中加入 `track_click`：
+
+```text
+X-Easeye-API: {"send_options":{"track_open":1,"track_click":1}}
+```
+
+---
+
+## 对单个链接禁用跟踪
+
+当点击跟踪全局启用时，邮件中的每个链接都会被改写。如需将 **某个链接排除** 在点击跟踪之外（例如不希望重定向的退订链接），在 anchor 标签上添加 `ef:disable-tracking` 属性：
+
+```html
+<!-- 该链接不会被跟踪 -->
+<a href="https://yourdomain.com/unsubscribe" ef:disable-tracking>退订</a>
+
+<!-- 该链接会被跟踪 -->
+<a href="https://yourdomain.com/offer">查看活动</a>
+```
+
+`ef:disable-tracking` 属性会在渲染邮件时被剥离，收件人在源码中看不到它。
+
+<Note>
+  `ef:disable-tracking` 属性必须小写。只有当点击跟踪已通过 `trackClick: 1`（REST API）或 `send_options.track_click: 1`（SMTP）启用时，逐链接排除才会生效。
+</Note>
+
+---
+
+## 使用唯一消息 ID 去重
+
+为每条消息分配一个 `uniqueMsgID`，可以避免重复发送，并将跟踪事件与您自己系统中的具体消息关联起来。
+
+### REST API
+
+```json
+{
+  "uniqueMsgID": "order-confirm-99871"
+}
+```
+
+- 最长 **50 字节**
+- 仅允许字母、数字和连字符
+
+### SMTP
+
+使用 `X-Easeye-UniqueMsgID` 请求头：
+
+```text
+X-Easeye-UniqueMsgID: order-confirm-99871
+```
+
+如果 EffiLink 在去重窗口内收到第二个 `uniqueMsgID` 相同的发送请求，会抑制重复发送，避免因重试逻辑或应用问题使收件人收到两封相同邮件。
+
+---
+
+## 通过 webhook 消费跟踪事件
+
+打开与点击事件会以 webhook 推送的形式实时投递到您配置的端点，让您可以：
+
+- 当潜在客户打开提案邮件时更新 CRM 记录
+- 当用户点击 CTA 时触发后续自动化流程
+- 将互动数据记录到您自己的分析存储
+
+配置 webhook 监听端点及查看事件结构请参见[Webhooks](/zh/docs/webhooks)。
+
+---
+
+## 跟踪参考速览
+
+| 功能 | REST API 参数 | SMTP 请求头 |
+| --- | --- | --- |
+| 打开跟踪 | `"trackOpen": 1` | `X-Easeye-API: {"send_options":{"track_open":1}}` |
+| 点击跟踪 | `"trackClick": 1` | `X-Easeye-API: {"send_options":{"track_click":1}}` |
+| 禁用某个链接跟踪 | `<a>` 标签上添加 `ef:disable-tracking` | `<a>` 标签上添加 `ef:disable-tracking` |
+| 唯一消息 ID | `"uniqueMsgID": "your-id"` | `X-Easeye-UniqueMsgID: your-id` |
+| 订阅跟踪 | — | `X-Easeye-API: {"send_options":{"track_subscription":1}}` |
+| 自定义跟踪域名 | — | `X-Easeye-API: {"send_options":{"custom_domain":"https://..."}}` |

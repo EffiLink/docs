@@ -1,0 +1,126 @@
+---
+title: "SMS Send Statistics Report — POST /v5/sms/stats/get"
+sidebarTitle: "SMS Stats"
+description: "Retrieve daily SMS delivery statistics including sent count, delivery success and failure rates, and credit consumption for a given date range."
+---
+
+## Overview
+
+The SMS Statistics API returns daily delivery metrics for your SMS sends within a specified date range. Use these statistics to monitor delivery performance, track credit consumption, and identify delivery issues over time.
+
+**Base URL:** `https://api.effilink.co`<br />**Endpoint:** `POST /v5/sms/stats/get`
+
+Authentication via `ApiKey` or `OAuth` header is required.
+
+---
+
+## Request Parameters
+
+<ParamField body="startDate" type="string" required>
+  The start of the reporting period, in `YYYY-MM-DD` format (e.g., `2025-05-01`). Inclusive.
+</ParamField>
+
+<ParamField body="endDate" type="string" required>
+  The end of the reporting period, in `YYYY-MM-DD` format (e.g., `2025-05-31`). Inclusive.
+</ParamField>
+
+---
+
+## Response
+
+<ResponseField name="code" type="int">
+  HTTP-style status code. `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable status message. Empty string on success.
+</ResponseField>
+
+<ResponseField name="smsStatsList" type="array[object]">
+  An array of daily statistics objects, one entry per day within the requested date range (for days with activity).
+
+  <Expandable title="smsStatsList[] properties">
+    <ResponseField name="statDate" type="string">
+      The date for this statistics record, in `YYYY-MM-DD` format.
+    </ResponseField>
+
+    <ResponseField name="sentCount" type="int">
+      Total number of SMS messages dispatched on this date.
+    </ResponseField>
+
+    <ResponseField name="successCount" type="int">
+      Number of messages successfully delivered to recipients.
+    </ResponseField>
+
+    <ResponseField name="failCount" type="int">
+      Number of messages that failed to send (e.g., rejected by the platform before dispatch).
+    </ResponseField>
+
+    <ResponseField name="reportFailedCount" type="int">
+      Number of messages that were dispatched successfully but for which the carrier reported a delivery failure. These are counted separately from `failCount` because the message left the EffiLink platform but was not received by the end user.
+    </ResponseField>
+
+    <ResponseField name="chargedPoint" type="int">
+      Number of credits consumed on this date. Credits are typically charged per successfully dispatched message.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## Example Request
+
+```text
+curl --request POST \
+  --url https://api.effilink.co/v5/sms/stats/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "startDate": "2025-05-01",
+    "endDate": "2025-05-31"
+  }'
+```
+
+---
+
+## Example Response
+
+```json
+{
+  "code": 200,
+  "message": "",
+  "smsStatsList": [
+    {
+      "statDate": "2025-05-01",
+      "sentCount": 850,
+      "successCount": 838,
+      "failCount": 12,
+      "reportFailedCount": 3,
+      "chargedPoint": 838
+    }
+  ]
+}
+```
+
+---
+
+## Metric Reference
+
+| Field | Description |
+| --- | --- |
+| `sentCount` | All outbound messages attempted on this date |
+| `successCount` | Messages delivered and confirmed by the platform |
+| `failCount` | Messages rejected or failed before leaving EffiLink |
+| `reportFailedCount` | Messages sent but reported as undelivered by the carrier |
+| `chargedPoint` | Credits deducted — typically equal to `successCount` |
+
+<Tip>
+  A high `reportFailedCount` relative to `successCount` may indicate issues with recipient numbers (e.g., invalid or ported numbers) or carrier routing problems. Review affected numbers and contact EffiLink support if the rate is consistently elevated.
+</Tip>
+
+### Understanding Delivery Failures
+
+There are two distinct failure types reported by this API:
+
+- **`failCount`** — The message was rejected at the EffiLink platform level and was never dispatched. These are **not** charged.
+- **`reportFailedCount`** — The message was dispatched and left the EffiLink platform, but the carrier's delivery receipt indicated failure. These may still consume credits, and the `chargedPoint` field reflects actual charges.

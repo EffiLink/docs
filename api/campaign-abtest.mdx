@@ -1,0 +1,181 @@
+---
+title: "Campaign A/B Test Sends — /v5/campaign/mail/sends_abtest"
+sidebarTitle: "A/B Test"
+description: "Create A/B test email campaigns to compare subject lines or content variants and automatically deliver the winning version to remaining contacts."
+---
+
+## Overview
+
+The A/B Test Campaigns API lets you split a contact list into test groups, send different email variants to each group, and automatically deliver the winning version — determined by open rate or click rate — to the remaining contacts after the test period.
+
+**Endpoint:** `POST /v5/campaign/mail/sends_abtest`
+
+You can define up to 4 additional test versions (5 total including the main version). Each version can vary its subject line, content, or both.
+
+---
+
+## Request Parameters
+
+<ParamField body="mailName" type="string" required>
+  The name of the A/B test task. Maximum 200 bytes. Must be unique within your team.
+</ParamField>
+
+<ParamField body="subject" type="string" required>
+  The subject line for the main (control) version of the email.
+</ParamField>
+
+<ParamField body="content" type="string" required>
+  The HTML body content for the main (control) version of the email.
+</ParamField>
+
+<ParamField body="senderName" type="string" required>
+  The display name shown to recipients in the "From" field.
+</ParamField>
+
+<ParamField body="senderMail" type="string" required>
+  The verified sender email address. Must be an address already verified in your EffiLink account.
+</ParamField>
+
+<ParamField body="replyTo" type="string">
+  The reply-to email address.
+</ParamField>
+
+<ParamField body="sendDate" type="string">
+  Scheduled send time in ISO 8601 UTC format (e.g., `2025-06-01T10:00:00Z`). Must not be more than 30 days in the future. Omit to send immediately.
+</ParamField>
+
+<ParamField body="sendListNames" type="array[string]" required>
+  An array of target contact list names. The combined total of contacts across all lists must be at least 10.
+
+  ```json
+  ["All Customers"]
+  ```
+</ParamField>
+
+<ParamField body="repelListNames" type="array[string]">
+  An array of exclusion contact list names. Recipients on these lists will be excluded from the send.
+</ParamField>
+
+<ParamField body="abTestVersions" type="array[object]" required>
+  An array of test variant objects, defining 1 to 4 additional versions beyond the main version (5 total maximum). At least one version must be provided.
+
+  <Expandable title="abTestVersions[] properties">
+    <ParamField body="subject" type="string">
+      The subject line for this variant. Cannot be empty if `content` is also empty.
+    </ParamField>
+
+    <ParamField body="content" type="string">
+      The HTML body content for this variant. Cannot be empty if `subject` is also empty.
+    </ParamField>
+  </Expandable>
+
+  <Note>
+    Each version must have at least one of `subject` or `content` set. A version with both fields empty is invalid.
+  </Note>
+</ParamField>
+
+<ParamField body="timeLimit" type="int" required>
+  The duration of the A/B test in hours, after which the winning version is determined and sent to remaining contacts. Accepted range: **1–100**.
+</ParamField>
+
+<ParamField body="percent" type="int" required>
+  The percentage of the total contact list assigned to each individual test version. All test versions share the same percentage value, and the total allocation (`percent × number of versions`) must not exceed 100%. The remaining contacts receive the winning version after the test period.
+
+  For example, with 2 versions (main \+ 1 variant) at `percent: 20`, each version reaches 20% of the list (40% total). The winning version is then sent to the remaining 60%.
+</ParamField>
+
+<ParamField body="abTestType" type="string">
+  The metric used to determine the winning version after the test period. Defaults to `open`.
+
+  | Value | Winning metric |
+  | --- | --- |
+  | `open` | Highest unique open rate |
+  | `click` | Highest unique click rate |
+</ParamField>
+
+---
+
+## Response
+
+<ResponseField name="code" type="int">
+  HTTP-style status code. `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable status message. Empty string on success.
+</ResponseField>
+
+---
+
+## Error Codes
+
+| Code | Cause |
+| --- | --- |
+| `400` | Missing a required field (`mailName`, `subject`, `content`, `senderName`, `senderMail`, `sendListNames`, `abTestVersions`, `timeLimit`, or `percent`) |
+| `400` | `mailName` exceeds 200 bytes |
+| `400` | `sendDate` is not valid ISO 8601 UTC format |
+| `400` | `sendListNames` is empty or combined contacts total fewer than 10 |
+| `400` | `abTestVersions` is empty |
+| `400` | Total versions (main \+ variants) exceed 5 |
+| `400` | All provided `abTestVersions` have both `subject` and `content` empty |
+| `400` | `timeLimit` is outside the valid range of 1–100 hours |
+| `400` | `percent` × total number of versions (main \+ variants) exceeds 100% |
+| `400` | `abTestType` is not `open` or `click` |
+| `403` | `sendDate` is more than 1 hour in the past |
+| `403` | `sendDate` is more than 30 days in the future |
+| `500` | Internal server error during task creation |
+
+---
+
+## How A/B Testing Works
+
+1. **Divide** — EffiLink splits your contact list into test groups. Each version (including the main) receives `percent`% of the total list.
+2. **Test** — All versions are sent simultaneously at `sendDate`. The test runs for `timeLimit` hours.
+3. **Winner** — After the test period, the version with the best `abTestType` metric (open rate or click rate) is declared the winner.
+4. **Deliver** — The winning version is sent automatically to all remaining contacts who did not receive a test version.
+
+<Tip>
+  For statistically meaningful results, ensure your test group sizes are large enough. With `percent: 10` and a list of 1,000 contacts, each variant receives only 100 recipients — consider using larger lists or higher percentages for low-volume tests.
+</Tip>
+
+---
+
+## Example Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/sends_abtest \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "mailName": "Subject Line A/B Test - June",
+    "subject": "Check out our latest products",
+    "content": "<p>Browse our new collection...</p>",
+    "senderName": "Your Company",
+    "senderMail": "marketing@yourdomain.com",
+    "sendListNames": ["All Customers"],
+    "abTestVersions": [
+      {"subject": "New arrivals you'\''ll love this June"}
+    ],
+    "timeLimit": 24,
+    "percent": 20,
+    "abTestType": "open"
+  }'
+```
+
+In this example:
+
+- **Main version** (`subject: "Check out our latest products"`) → sent to 20% of the list.
+- **Variant A** (`subject: "New arrivals you'll love this June"`) → sent to another 20%.
+- After **24 hours**, the version with the higher open rate is sent to the remaining **60%**.
+
+---
+
+## Example Response
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```

@@ -1,0 +1,154 @@
+---
+title: "Campaign Email Stats — POST /v5/campaign/mail/stats/get"
+sidebarTitle: "Campaign Stats"
+description: "Retrieve aggregated delivery and engagement statistics for your EffiLink campaign email sends, including opens, clicks, bounces, and unsubscribes."
+---
+
+## Overview
+
+The Campaign Stats API returns delivery and engagement metrics for campaign email send tasks within a given date range. Use this endpoint to monitor campaign performance, track trends over time, and identify areas for improvement.
+
+**Base URL:** `https://api.effilink.co`<br />**Endpoint:** `POST /v5/campaign/mail/stats/get`
+
+Authentication via `ApiKey` or `OAuth` header is required.
+
+---
+
+## Request Parameters
+
+<ParamField body="startDate" type="string" required>
+  The start of the reporting period, in `YYYY-MM-DD` format (e.g., `2025-05-01`). Inclusive.
+</ParamField>
+
+<ParamField body="endDate" type="string" required>
+  The end of the reporting period, in `YYYY-MM-DD` format (e.g., `2025-05-31`). Inclusive.
+</ParamField>
+
+<ParamField body="mailName" type="string">
+  Filter results to a specific send task by name. Omit to return statistics for all tasks in the date range.
+</ParamField>
+
+<ParamField body="type" type="string">
+  Filter by task type.
+
+  | Value | Description |
+  | --- | --- |
+  | `MailList` | Standard list-based campaign sends |
+  | `ABTest` | A/B test campaign sends |
+
+  Omit to return all task types.
+</ParamField>
+
+---
+
+## Response
+
+<ResponseField name="code" type="int">
+  HTTP-style status code. `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable status message. `null` or empty string on success.
+</ResponseField>
+
+<ResponseField name="totalRecords" type="int">
+  Total number of send tasks matching the request filters.
+</ResponseField>
+
+<ResponseField name="mailStatsList" type="array[object]">
+  An array of statistics objects, one per matching send task.
+
+  <Expandable title="mailStatsList[] properties">
+    <ResponseField name="mailName" type="string">
+      The name of the send task.
+    </ResponseField>
+
+    <ResponseField name="mailSendDate" type="int">
+      The timestamp of when the task was sent, expressed in **milliseconds since Unix epoch** (e.g., `1747879200000`).
+    </ResponseField>
+
+    <ResponseField name="sentCount" type="int">
+      Total number of emails that were dispatched to recipients.
+    </ResponseField>
+
+    <ResponseField name="openCount" type="int">
+      Number of unique email opens recorded for this send.
+    </ResponseField>
+
+    <ResponseField name="clickCount" type="int">
+      Number of unique link clicks recorded for this send.
+    </ResponseField>
+
+    <ResponseField name="hardBounce" type="int">
+      Number of permanent delivery failures (e.g., invalid or non-existent addresses).
+    </ResponseField>
+
+    <ResponseField name="softBounce" type="int">
+      Number of temporary delivery failures (e.g., full mailbox, server unavailable).
+    </ResponseField>
+
+    <ResponseField name="unsentCount" type="int">
+      Number of contacts that were filtered out and did not receive the email (e.g., duplicates, suppressed addresses, exclusion list matches).
+    </ResponseField>
+
+    <ResponseField name="unsubscribeCount" type="int">
+      Number of recipients who unsubscribed via this send.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## Example Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/stats/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "startDate": "2025-05-01",
+    "endDate": "2025-05-31"
+  }'
+```
+
+---
+
+## Example Response
+
+```json
+{
+  "code": 200,
+  "message": null,
+  "mailStatsList": [
+    {
+      "mailName": "May Newsletter",
+      "mailSendDate": 1747879200000,
+      "sentCount": 2450,
+      "openCount": 612,
+      "clickCount": 184,
+      "hardBounce": 3,
+      "softBounce": 12,
+      "unsentCount": 8,
+      "unsubscribeCount": 5
+    }
+  ],
+  "totalRecords": 1
+}
+```
+
+---
+
+## Metric Reference
+
+| Field | Formula / Notes |
+| --- | --- |
+| **Open rate** | `openCount / sentCount × 100` |
+| **Click rate** | `clickCount / sentCount × 100` |
+| **Bounce rate** | `(hardBounce + softBounce) / sentCount × 100` |
+| **Unsubscribe rate** | `unsubscribeCount / sentCount × 100` |
+| **mailSendDate** | Unix timestamp in milliseconds — divide by 1000 for seconds |
+
+<Tip>
+  Hard bounces indicate permanently undeliverable addresses. Consider removing hard-bounced recipients from your contact lists to protect your sender reputation.
+</Tip>

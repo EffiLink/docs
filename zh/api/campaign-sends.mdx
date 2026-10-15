@@ -1,0 +1,460 @@
+---
+title: "发送营销活动"
+---
+
+## 概述
+
+营销发送 API 让您管理营销邮件发送任务的完整生命周期，支持创建、取消、获取和删除。
+
+---
+
+## 创建发送任务
+
+`POST /v5/campaign/mail/sends`
+
+创建一个新的营销邮件发送任务。任务可以立即保存而不发送,也可以安排在未来发送,或立即发出。
+
+### 请求参数
+
+<ParamField body="mailName" type="string" required>
+  发送任务名称。最大 200 字节。必须在您的团队内唯一。
+</ParamField>
+
+<ParamField body="senderMail" type="string" required>
+  已验证的发件人邮箱地址。必须是您 EffiLink 账户中已完成验证的地址。
+</ParamField>
+
+<ParamField body="senderName" type="string">
+  在"发件人"字段中向收件人显示的名称。
+</ParamField>
+
+<ParamField body="subject" type="string">
+  邮件主题。
+</ParamField>
+
+<ParamField body="content" type="string">
+  邮件的 HTML 正文内容。支持个性化标签。
+</ParamField>
+
+<ParamField body="sendDate" type="string">
+  定时发送时间,采用 ISO 8601 UTC 格式(例如 `2025-06-01T10:00:00Z`)。省略则立即发送。
+</ParamField>
+
+<ParamField body="onlySave" type="boolean">
+  设置为 `true` 将任务保存为草稿而不发送。当 `true` 时,`sendListNames` 不是必填项。默认为 `false`。
+</ParamField>
+
+<ParamField body="sendListNames" type="array[string]">
+  目标联系人列表名称数组。除非 `onlySave` 为 `true`,否则必填。
+
+  ```json
+  ["Newsletter Subscribers", "VIP Customers"]
+  ```
+</ParamField>
+
+<ParamField body="repelListNames" type="array[string]">
+  排除的联系人列表名称数组。这些列表中的收件人将被排除在发送之外。
+</ParamField>
+
+<ParamField body="replyTo" type="string">
+  回复邮箱地址。
+</ParamField>
+
+<ParamField body="attachment" type="object">
+  随邮件附带的单个文件附件。
+
+  <Expandable title="attachment 属性">
+    <ParamField body="fileName" type="string" required>
+      文件名,包含扩展名(例如 `report.pdf`)。
+    </ParamField>
+
+    <ParamField body="fileData" type="string" required>
+      文件的 Base64 编码内容。
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="languageCode" type="string">
+  邮件的语言代码。控制本地化渲染。
+
+  可接受值：`zh-cn`（简体中文）, `en`（英文）, `ja`（日文）, `ko`（韩文）, `de`（德文）, `tt`（俄文）, `es`（西班牙文）, `zh-tw`（繁体中文）, `ar`（阿拉伯文）, `pt-br`（葡萄牙文-巴西）, `id`（印尼文）, `vi`（越南文）, `th`（泰文）, `fr`（法文）
+</ParamField>
+
+<ParamField body="marketName" type="string">
+  将此发送任务与指定的营销活动关联。
+</ParamField>
+
+<ParamField body="subscriptName" type="string">
+  将此发送任务与指定的订阅关联。
+</ParamField>
+
+<ParamField body="projectCode" type="string">
+  将此发送任务与项目关联。如果项目不存在,将自动创建。
+</ParamField>
+
+<ParamField body="editorType" type="string">
+  用于编写邮件的编辑器类型。默认为 `DRAG`。
+
+  | 值 | 描述 |
+  | --- | --- |
+  | `DRAG` | 拖放式可视化编辑器(默认) |
+  | `CLASSIC` | HTML 代码编辑器 |
+</ParamField>
+
+<ParamField body="createUserName" type="string">
+  创建人用户名。请在页面查看并获取。
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  设置为 `true` 以沙箱模式运行。邮件会被处理但不实际投递。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  HTTP 风格的状态代码。成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  人类可读的状态消息。成功时为空字符串。
+</ResponseField>
+
+<ResponseField name="id" type="long">
+  新创建的发送任务的内部数字 ID。
+</ResponseField>
+
+<ResponseField name="guid" type="string">
+  发送任务的全局唯一标识符(GUID)。
+</ResponseField>
+
+### 错误代码
+
+| 代码 | 消息 | 原因 |
+| --- | --- | --- |
+| `400` | Missing required parameter | 请求中缺少必填字段 |
+| `400` | mailName too long | `mailName` 超过 200 字节 |
+| `400` | Invalid sendDate | `sendDate` 不是有效的 ISO 8601 UTC 格式 |
+| `400` | Missing attachment data | `attachment` 对象不完整(缺少 `fileName` 或 `fileData`) |
+| `400` | Missing send lists | `sendListNames` 为空且 `onlySave` 不为 `true` |
+| `403` | Send list not found | `sendListNames` 中的一个或多个名称不存在 |
+| `403` | Exclusion list not found | `repelListNames` 中的一个或多个名称不存在 |
+| `500` | Task creation failed | 发生内部服务器错误 |
+
+### 请求示例
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/sends \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "mailName": "May Newsletter",
+    "senderMail": "newsletter@yourdomain.com",
+    "senderName": "Your Company",
+    "subject": "本月新动态",
+    "content": "<p>您好 ,</p><p>以下是本月的重点内容...</p>",
+    "sendListNames": ["Newsletter Subscribers"],
+    "repelListNames": ["Unsubscribed"],
+    "sendDate": "2025-06-01T10:00:00Z"
+  }'
+```
+
+### 响应示例
+
+```json
+{
+  "code": 200,
+  "message": "",
+  "id": 1120,
+  "guid": "915cb709ac96418495fcf4f666f15c0d"
+}
+```
+
+---
+
+## 取消发送任务
+
+`POST /v5/campaign/mail/cancel`
+
+取消已安排的发送任务。仅可取消 `sendDate` 在未来(即尚未发出)的任务。
+
+### 请求参数
+
+<ParamField body="mailName" type="string" required>
+  要取消的发送任务名称。
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  设置为 `true` 以取消在沙箱模式下创建的任务。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  人类可读的状态消息。成功时为空字符串。
+</ResponseField>
+
+### 请求示例
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/cancel \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "mailName": "May Newsletter"
+  }'
+```
+
+---
+
+## 获取发送任务
+
+`POST /v5/campaign/mail/get`
+
+获取分页的营销发送任务列表,可选过滤条件。包含完整任务详情和发送统计。
+
+### 请求参数
+
+<ParamField body="mailName" type="string">
+  按名称包含此值的任务过滤结果。
+</ParamField>
+
+<ParamField body="subject" type="string">
+  按主题包含此值的任务过滤结果。
+</ParamField>
+
+<ParamField body="senderMail" type="string">
+  按从此邮箱地址发送的任务过滤结果。
+</ParamField>
+
+<ParamField body="type" type="string">
+  按任务类型过滤。可接受值:`MailList`、`ABTest`。
+</ParamField>
+
+<ParamField body="allTeam" type="boolean">
+  设置为 `true` 返回您账户中所有团队的任务。默认为 `false`(仅当前团队)。
+</ParamField>
+
+<ParamField body="mailStatus" type="array[int]">
+  按任务状态过滤结果。可接受值:`-1`(草稿)、`1`(发送中)、`2`(发送完成)、`4`(发送失败)。省略以返回所有状态。
+
+  ```json
+  [-1, 2]
+  ```
+</ParamField>
+
+<ParamField body="pageSize" type="int">
+  每页结果数。默认为 `10`。
+</ParamField>
+
+<ParamField body="pageIndex" type="int">
+  页码(从 1 开始)。默认为 `1`。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  人类可读的状态消息。
+</ResponseField>
+
+<ResponseField name="totalRecords" type="int">
+  符合过滤条件的任务总数。
+</ResponseField>
+
+<ResponseField name="mailList" type="array[object]">
+  发送任务对象数组。
+
+  <Expandable title="mailList[] 属性">
+    <ResponseField name="mailName" type="string">
+      发送任务名称。
+    </ResponseField>
+
+    <ResponseField name="subject" type="string">
+      邮件主题。
+    </ResponseField>
+
+    <ResponseField name="mailContent" type="string">
+      HTML 正文内容。
+    </ResponseField>
+
+    <ResponseField name="senderName" type="string">
+      发件人显示名称。
+    </ResponseField>
+
+    <ResponseField name="senderMail" type="string">
+      发件人邮箱地址。
+    </ResponseField>
+
+    <ResponseField name="replyTo" type="string">
+      回复邮箱地址。
+    </ResponseField>
+
+    <ResponseField name="rcptEmails" type="array[string]">
+      单独的收件人邮箱地址(如适用)。
+    </ResponseField>
+
+    <ResponseField name="repelEmails" type="array[string]">
+      单独排除的邮箱地址(如适用)。
+    </ResponseField>
+
+    <ResponseField name="rcptListNames" type="array[string]">
+      目标联系人列表名称。
+    </ResponseField>
+
+    <ResponseField name="repelListNames" type="array[string]">
+      排除的联系人列表名称。
+    </ResponseField>
+
+    <ResponseField name="sendByDateTime" type="int">
+      定时或实际发送时间,以**毫秒**为单位的 Unix 时间戳(例如 `1761199614000`)。
+    </ResponseField>
+
+    <ResponseField name="taskType" type="string">
+      任务类型:`MailList` 或 `ABTest`。
+    </ResponseField>
+
+    <ResponseField name="mailStatus" type="int">
+      任务当前状态。可能值:`-1`(草稿)、`1`(发送中)、`2`(发送完成)、`4`(发送失败)。
+    </ResponseField>
+
+    <ResponseField name="guid" type="string">
+      任务的全局唯一标识符。
+    </ResponseField>
+
+    <ResponseField name="teamName" type="string">
+      拥有此任务的团队。
+    </ResponseField>
+
+    <ResponseField name="languageCode" type="string">
+      与任务关联的语言代码。
+    </ResponseField>
+
+    <ResponseField name="marketName" type="string">
+      关联的营销活动名称。
+    </ResponseField>
+
+    <ResponseField name="subscriptName" type="string">
+      关联的订阅名称。
+    </ResponseField>
+
+    <ResponseField name="projectCode" type="string">
+      关联的项目代码。
+    </ResponseField>
+
+    <ResponseField name="reviewerName" type="string">
+      审核任务的审阅人姓名(如适用)。
+    </ResponseField>
+
+    <ResponseField name="mailSummary" type="string">
+      邮件任务摘要。
+    </ResponseField>
+
+    <ResponseField name="audit" type="boolean">
+      邮件任务是否进行智检。
+    </ResponseField>
+
+    <ResponseField name="abTestTimeLimit" type="int">
+      AB测试任务的测试期限（单位：小时）。仅在邮件任务类型为AB测试时返回。
+    </ResponseField>
+
+    <ResponseField name="mailStats" type="object">
+      任务的投递和互动统计。
+
+      <Expandable title="mailStats 属性">
+        <ResponseField name="sentCount" type="int">
+          发送邮件总数。
+        </ResponseField>
+
+        <ResponseField name="deliveredCount" type="int">
+          确认投递的邮件数。
+        </ResponseField>
+
+        <ResponseField name="openCount" type="int">
+          唯一打开次数。
+        </ResponseField>
+
+        <ResponseField name="clickCount" type="int">
+          唯一链接点击次数。
+        </ResponseField>
+
+        <ResponseField name="hardBounce" type="int">
+          硬退信数(永久投递失败)。
+        </ResponseField>
+
+        <ResponseField name="softBounce" type="int">
+          软退信数(临时投递失败)。
+        </ResponseField>
+
+        <ResponseField name="unsentCount" type="int">
+          被过滤而未发送的联系人数。
+        </ResponseField>
+
+        <ResponseField name="unsubscribeCount" type="int">
+          此次发送触发的退订数。
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### 请求示例
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "pageSize": 10,
+    "pageIndex": 1
+  }'
+```
+
+---
+
+## 删除发送任务
+
+`POST /v5/campaign/mail/delete`
+
+按名称永久删除营销发送任务。
+
+### 请求参数
+
+<ParamField body="mailName" type="string" required>
+  要删除的发送任务名称。
+</ParamField>
+
+<ParamField body="sandboxMode" type="boolean">
+  设置为 `true` 以删除在沙箱模式下创建的任务。
+</ParamField>
+
+### 响应
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  人类可读的状态消息。成功时为空字符串。
+</ResponseField>
+
+### 请求示例
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/delete \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "mailName": "May Newsletter"
+  }'
+```

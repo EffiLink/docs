@@ -1,0 +1,118 @@
+---
+title: "事务性邮件统计"
+sidebarTitle: "邮件统计"
+---
+
+## 概述
+
+获取指定日期范围内的事务性邮件统计。结果按每日返回，涵盖投递、互动、退信和退订指标。
+
+`POST /v5/transactional/mail/stats/get`
+
+---
+
+## 请求参数
+
+<ParamField body="startDate" type="string" required>
+  查询日期范围的起始日期,格式为 `YYYY-MM-DD`。此日期**包含在内**。
+
+  示例:`"2025-05-01"`
+</ParamField>
+
+<ParamField body="endDate" type="string" required>
+  查询日期范围的结束日期,格式为 `YYYY-MM-DD`。此日期**包含在内**。
+
+  示例:`"2025-05-31"`
+</ParamField>
+
+---
+
+## 响应字段
+
+<ResponseField name="code" type="int">
+  成功时为 `200`。非 200 值表示错误。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  成功时为 `null`。失败时包含错误描述。
+</ResponseField>
+
+<ResponseField name="mailStatsList" type="array[object]">
+  覆盖请求日期范围的每日统计对象数组。每个对象代表一个日历日。
+
+  <Expandable title="mailStatsList[] 字段">
+    <ResponseField name="statsDate" type="string">
+      此条目的日历日期,格式为 `YYYY-MM-DD`。
+    </ResponseField>
+
+    <ResponseField name="sentCount" type="int">
+      此日期成功发送的邮件总数。
+    </ResponseField>
+
+    <ResponseField name="openCount" type="int">
+      已被收件人打开的已发送邮件数。需要在发送时启用打开跟踪。
+    </ResponseField>
+
+    <ResponseField name="clickCount" type="int">
+      所有已发送邮件中记录的链接点击次数。需要在发送时启用点击跟踪。
+    </ResponseField>
+
+    <ResponseField name="bounceCount" type="int">
+      记录的软退信数量,即临时无法投递的邮件。
+    </ResponseField>
+
+    <ResponseField name="unsentCount" type="int">
+      被过滤或抑制且未投递的邮件数量(例如由于退订列表或地址无效)。
+    </ResponseField>
+
+    <ResponseField name="unsubscribeCount" type="int">
+      此日期通过邮件退订链接退订的收件人数。
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## 示例
+
+### 请求
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/transactional/mail/stats/get \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "startDate": "2025-05-01",
+    "endDate": "2025-05-31"
+  }'
+```
+
+### 响应
+
+```json
+{
+  "code": 200,
+  "message": null,
+  "mailStatsList": [
+    {
+      "statsDate": "2025-05-01",
+      "sentCount": 450,
+      "openCount": 120,
+      "clickCount": 38,
+      "bounceCount": 2,
+      "unsentCount": 0,
+      "unsubscribeCount": 1
+    },
+    {
+      "statsDate": "2025-05-02",
+      "sentCount": 510,
+      "openCount": 155,
+      "clickCount": 44,
+      "bounceCount": 0,
+      "unsentCount": 1,
+      "unsubscribeCount": 2
+    }
+  ]
+}
+```

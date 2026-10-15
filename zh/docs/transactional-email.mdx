@@ -1,0 +1,190 @@
+---
+title: "发送事务邮件"
+sidebarTitle: "事务邮件"
+description: "使用 EffiLink 事务性邮件 REST API 发送回执、密码重置、告警等触发式邮件。"
+---
+
+事务性邮件是由系统触发、发送给单个收件人的消息，通常用于响应用户操作或事件。常见场景包括订单确认、密码重置链接、发货通知、账户验证邮件，以及其他任何用户预期会收到的具有时效性、个性化的消息。
+
+EffiLink 的事务性邮件端点让您可以完全控制每封邮件的内容、发送时间、跟踪和可送达性。
+
+---
+
+## 快速开始
+
+使用 `POST` 请求发送单封事务性邮件到 `/v5/transactional/mail/sends_customised`。
+
+```bash
+curl -X POST https://api.effilink.co/v5/transactional/mail/sends_customised \
+  -H "ApiKey: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "您的订单已发货",
+    "content": "<p>你好 Jane，您的订单 #1234 已在路上！</p>",
+    "senderMail": "no-reply@yourdomain.com",
+    "senderName": "您的商店",
+    "to": {
+      "email": "jane.doe@example.com",
+      "name": "Jane Doe"
+    }
+  }'
+```
+
+成功响应示例：
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+<Note>
+  发送前，您的 `senderMail` 地址必须在 EffiLink 账户中注册并通过验证。未注册的发件人会返回 `403` 错误。
+</Note>
+
+---
+
+## 使用模板与个性化
+
+不必在每个请求中内联 HTML，您可以在 EffiLink 中保存可复用模板并按名称引用。通过 `templateName` 传入模板名，并在 `params` 对象中提供个性化标签对应的动态值。
+
+```bash
+curl -X POST https://api.effilink.co/v5/transactional/mail/sends_customised \
+  -H "ApiKey: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "templateName": "order-shipped",
+    "params": {
+      "firstName": "Jane",
+      "orderNumber": "1234",
+      "trackingUrl": "https://track.example.com/1234"
+    },
+    "senderMail": "no-reply@yourdomain.com",
+    "senderName": "您的商店",
+    "to": {
+      "email": "jane.doe@example.com",
+      "name": "Jane Doe"
+    }
+  }'
+```
+
+- `templateName` 的优先级 **高于** 同一请求中的 `content` 字段。
+- 模板中的个性化标签（例如 `{{firstName}}`）会被替换为 `params` 中提供的值。
+- 如果同时缺少 `content` 和 `templateName`，请求会返回 `400` 错误。
+
+---
+
+## 计划发送
+
+将 `sendDate` 设置为 ISO 8601 UTC 时间戳，可在指定时间投递邮件，最长可提前 **72 小时** 排程。留空或省略 `sendDate` 表示立即发送。
+
+```json
+{
+  "sendDate": "2024-06-15T09:00:00Z"
+}
+```
+
+<Warning>
+  `sendDate` 必须为有效的 ISO 8601 UTC 格式。格式错误的时间戳会返回 `400` 错误。允许的最长排程时间为请求发起后 72 小时内。
+</Warning>
+
+---
+
+## 添加附件
+
+使用 `attachment` 对象添加单个文件附件。文件内容必须使用 **base64 编码**。
+
+```json
+{
+  "attachment": {
+    "fileName": "invoice-1234.pdf",
+    "fileData": "JVBERi0xLjQKJ..."
+  }
+}
+```
+
+<Note>
+  每封事务性邮件请求仅支持一个附件。如需多个文件，建议将其托管到外部并在邮件正文中放置链接。SMTP 邮件总大小上限为 10 MB。
+</Note>
+
+---
+
+## 使用 `messageVersions` 批量发送
+
+如果您需要在一次 API 调用中发送最多 **100 个个性化版本** 的同一邮件，可使用 `messageVersions` 数组。每个版本最多可指向 20 个收件人，并可覆盖全局的主题、内容、模板或参数。
+
+```go
+curl -X POST https://api.effilink.co/v5/transactional/mail/sends_customised \
+  -H "ApiKey: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "senderMail": "no-reply@yourdomain.com",
+    "senderName": "您的商店",
+    "subject": "您的订单更新",
+    "templateName": "order-update",
+    "messageVersions": [
+      {
+        "to": [{ "email": "alice@example.com", "name": "Alice" }],
+        "params": { "firstName": "Alice", "orderNumber": "1001" }
+      },
+      {
+        "to": [{ "email": "bob@example.com", "name": "Bob" }],
+        "params": { "firstName": "Bob", "orderNumber": "1002" },
+        "subject": "Bob，您的订单更新"
+      }
+    ]
+  }'
+```
+
+**使用 `messageVersions` 时的优先级规则：**
+
+| 字段 | 优先级 |
+| --- | --- |
+| `messageVersions[].templateName` | 最高（覆盖全局的 templateName 与 content） |
+| `messageVersions[].content` | 高（覆盖全局 content） |
+| `messageVersions[].subject` | 版本级（覆盖全局 subject） |
+| `messageVersions[].params` | 版本级（覆盖全局 params 中同名的键） |
+| 全局 `templateName` / `content` | 兜底 |
+
+每个版本还支持 `cc` 与 `bcc` 数组（每项最多 20 个地址）。完整的 `messageVersions` 结构请参见 [API 参考](/zh/api/transactional-batch)。
+
+---
+
+## 跟踪打开和点击
+
+在请求中加入 `trackOpen` 和 `trackClick` 以启用互动跟踪：
+
+```json
+{
+  "trackOpen": 1,
+  "trackClick": 1
+}
+```
+
+- `trackOpen: 1`：EffiLink 会插入一个透明的跟踪像素，检测邮件是否被打开。
+- `trackClick: 1`：邮件中所有链接会被改写，通过 EffiLink 的点击跟踪服务转发。
+
+如需将某个链接 **排除** 在点击跟踪之外，请在 anchor 标签上添加 `ef:disable-tracking` 属性：
+
+```html
+<a href="https://example.com/unsubscribe" ef:disable-tracking>取消订阅</a>
+```
+
+有关跟踪与通过 webhook 消费事件数据的更多信息，请参见[邮件跟踪](/zh/docs/email-tracking)。
+
+---
+
+## 常见错误
+
+| 代码 | 原因 | 解决方法 |
+| --- | --- | --- |
+| `400` | 缺少必需参数（`subject`、`senderMail`、`to`，以及 `content` 或 `templateName`） | 检查所有必需字段是否已提供 |
+| `400` | `sendDate` 格式无效 | 使用 ISO 8601 UTC 格式，例如 `2024-06-15T09:00:00Z` |
+| `400` | `category`、`campaign` 或 `uniqueMsgID` 超长 | `category` 与 `campaign` 最长 100 字节；`uniqueMsgID` 最长 50 字节 |
+| `400` | `senderName` 超过 200 字节 | 缩短显示名称 |
+| `400` | `replyTo` 地址无效 | 校验回信地址格式 |
+| `400` | 未提供内容 | 至少提供 `content` 或 `templateName` 之一 |
+| `403` | 发件人地址未注册 | 在 EffiLink 控制台注册并验证 `senderMail` |
+| `403` | 未找到模板 | 确认账户中存在对应的 `templateName` |
+| `403` | 额度不足 | 为账户充值 |

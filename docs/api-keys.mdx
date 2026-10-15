@@ -1,0 +1,52 @@
+---
+title: "Generate and Use EffiLink API Keys for Authentication"
+sidebarTitle: "API Keys"
+description: "Generate an EffiLink API Key from your team dashboard and authenticate server-to-server API requests using the ApiKey request header."
+---
+
+API Keys are the fastest way to authenticate requests to the EffiLink API. Each key is scoped to your team account, making them ideal for backend services, scripts, and any integration where your application operates under your own EffiLink credentials.
+
+<Note>
+  Each EffiLink team can hold up to **3 API Keys** by default. If you need additional keys, contact EffiLink support.
+</Note>
+
+## Generate an API Key
+
+<Steps>
+  <Step title="Open Settings">
+    Log in to your [EffiLink](https://app.effilink.co) account, then click **Settings** in the top-right corner of the dashboard.
+  </Step>
+  <Step title="Navigate to API Configuration">
+    In the Settings menu, click **API Configuration**, then select **API Keys** from the sub-menu.
+  </Step>
+  <Step title="Create a new key">
+    Click the **Create API Key** button. EffiLink will generate a new key and display it on screen.
+  </Step>
+  <Step title="Save your key immediately">
+    Copy the full key and store it securely. The **second half of the key is only shown once** — it cannot be retrieved again after you leave this page. If you lose it, you will need to delete the key and create a new one.
+  </Step>
+</Steps>
+
+## Authenticate a request
+
+Add the `ApiKey` header to every API request, replacing `YOUR_KEY` with the key you generated:
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/transactional/mail/sends_customised \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: 3BTWNKN0ZDQIZBQ33XCO-VzNnMBUbDLloZkKMHqEeqg2byrNpVyrqf-XI1sAk' \
+  --data '{"data":"here"}'
+```
+
+Every request to a protected EffiLink endpoint must include this header. Requests without a valid `ApiKey` header will receive a `401 Unauthorized` response.
+
+## Security best practices
+
+<Warning>
+  **Never expose your API Key in client-side code, public repositories, or logs.** Treat it like a password:
+
+  - Store it in an environment variable or a secrets manager (e.g., AWS Secrets Manager, HashiCorp Vault).
+  - Rotate keys periodically and immediately if you suspect a key has been compromised.
+  - Delete unused keys from **Settings → API Configuration → API Keys** to minimize your attack surface.
+</Warning>

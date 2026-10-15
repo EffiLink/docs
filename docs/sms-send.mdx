@@ -1,0 +1,78 @@
+---
+title: "Send SMS with the EffiLink API"
+sidebarTitle: "Send SMS"
+description: "Learn how to send transactional SMS messages — OTPs, alerts, and shipping updates — to one or more recipients using the EffiLink REST API."
+---
+
+The EffiLink SMS API lets you deliver time-sensitive text messages directly to your users' phones. Common use cases include one-time passcodes (OTPs) for two-factor authentication, order and shipping notifications, appointment reminders, and service alerts. A single API call can target one recipient or a list of numbers simultaneously.
+
+<Note>
+  **Regulatory requirement:** Due to carrier compliance rules, all SMS content and sender signatures (e.g. `[EffiLink]`) must be pre-registered on the EffiLink platform and submitted to the carrier for review before any messages can be delivered. Attempts to send unregistered content will be rejected. Register your templates and signatures in the EffiLink dashboard before making API calls.
+</Note>
+
+## Send an SMS
+
+**Endpoint:** `POST /v5/sms/sends`
+
+### cURL example
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/sms/sends \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "content": "[EffiLink] Your verification code is 123456.",
+    "toList": [
+      {"mobile": "18800006666"},
+      {"mobile": "18800008888"}
+    ]
+  }'
+```
+
+### Request parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `content` | string | ✅ Yes | The full SMS message body, including the registered sender signature (e.g. `[EffiLink]`). Must match a pre-approved template format. |
+| `toList` | array[object] | ✅ Yes | List of recipient objects. Each object must contain a `mobile` field with the destination phone number. Maximum 100 recipients per request for personalized sends; see [Batch SMS](/docs/sms-batch) for per-recipient content overrides. |
+| `toList[].mobile` | string | ✅ Yes | The recipient's phone number (e.g. `"18800006666"`). |
+| `sandboxMode` | boolean | ❌ No | Set to `true` to run a test send. The API processes the request normally but does **not** deliver the message. Useful for validating payloads in development. |
+
+### Response
+
+A successful request returns HTTP `200` with the following body:
+
+```json
+{
+  "code": 200,
+  "message": ""
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `code` | integer | `200` indicates the request was accepted for delivery. |
+| `message` | string | Additional status information. Empty on success. |
+
+## Sandbox mode
+
+Pass `"sandboxMode": true` in your request body to test your integration without sending live messages. The API validates your payload and returns a normal `200` response, but no SMS is dispatched to the carrier. Remove or set this field to `false` when you are ready to send in production.
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/sms/sends \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "content": "[EffiLink] Your verification code is 123456.",
+    "toList": [
+      {"mobile": "18800006666"}
+    ],
+    "sandboxMode": true
+  }'
+```
+
+## Next steps
+
+Need to send different message content to each recipient in a single request? See [Batch Personalized SMS](/docs/sms-batch) to learn how to combine a global template with per-recipient overrides.
