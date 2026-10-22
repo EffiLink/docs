@@ -97,7 +97,7 @@
           },
           {
             "tab": "API Reference",
-            "groups": [
+            "pages": [
               {
                 "group": "Transactional Email",
                 "pages": [
@@ -126,10 +126,10 @@
                 "group": "Contacts & Lists",
                 "pages": [
                   "api/contacts",
-                  "api/lists",
-                  "api/senders"
+                  "api/lists"
                 ]
               },
+              "api/senders",
               {
                 "group": "Webhooks",
                 "pages": [
