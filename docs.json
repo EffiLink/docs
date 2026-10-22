@@ -133,15 +133,7 @@
                 "group": "Accounts and Settings",
                 "pages": [
                   "api/senders",
-                  "api/webhook-config",
-                  {
-                    "group": "Senders",
-                    "pages": []
-                  },
-                  {
-                    "group": "Webhooks",
-                    "pages": []
-                  }
+                  "api/webhook-config"
                 ]
               },
               {
@@ -268,15 +260,7 @@
                 "group": "账户与设置",
                 "pages": [
                   "zh/api/senders",
-                  "zh/api/webhook-config",
-                  {
-                    "group": "发件人",
-                    "pages": []
-                  },
-                  {
-                    "group": "Webhooks",
-                    "pages": []
-                  }
+                  "zh/api/webhook-config"
                 ]
               },
               {
