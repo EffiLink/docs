@@ -97,7 +97,7 @@
           },
           {
             "tab": "API Reference",
-            "groups": [
+            "pages": [
               {
                 "group": "Transactional Email",
                 "pages": [
@@ -126,10 +126,10 @@
                 "group": "Contacts & Lists",
                 "pages": [
                   "api/contacts",
-                  "api/lists",
-                  "api/senders"
+                  "api/lists"
                 ]
               },
+              "api/senders",
               {
                 "group": "Webhooks",
                 "pages": [
@@ -224,7 +224,7 @@
           },
           {
             "tab": "API 参考",
-            "groups": [
+            "pages": [
               {
                 "group": "事务性邮件",
                 "pages": [
@@ -253,10 +253,10 @@
                 "group": "联系人与名单",
                 "pages": [
                   "zh/api/contacts",
-                  "zh/api/lists",
-                  "zh/api/senders"
+                  "zh/api/lists"
                 ]
               },
+              "zh/api/senders",
               {
                 "group": "Webhooks",
                 "pages": [
