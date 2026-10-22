@@ -129,7 +129,12 @@
                   "api/lists"
                 ]
               },
-              "api/senders",
+              {
+                "group": "Senders",
+                "pages": [
+                  "api/senders"
+                ]
+              },
               {
                 "group": "Webhooks",
                 "pages": [
@@ -256,7 +261,12 @@
                   "zh/api/lists"
                 ]
               },
-              "zh/api/senders",
+              {
+                "group": "发件人",
+                "pages": [
+                  "zh/api/senders"
+                ]
+              },
               {
                 "group": "Webhooks",
                 "pages": [
