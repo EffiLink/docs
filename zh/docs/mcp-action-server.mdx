@@ -90,7 +90,7 @@ call_api({
 })
 ```
 
-当 `sandboxMode: true` 时，请求会被完整验证，但不会实际发送邮件 —— 详见 [Sandbox Mode](/docs/sandbox-mode)（英文页面）。确认无误后去掉该参数即可正式发送。
+当 `sandboxMode: true` 时，请求会被完整验证，但不会实际发送邮件 —— 详见 [沙盒模式](zh/docs/sandbox-mode)。确认无误后去掉该参数即可正式发送。
 
 ## 示例提问
 
@@ -106,7 +106,7 @@ call_api({
 
 - **仅限于事务性消息。** 默认仅允许 `/v5/transactional/*` 路径。除非你在服务器代码中扩展 `ALLOWED_PREFIX`，否则无法访问营销活动、短信和联系人接口。
 - **默认仅限本地使用。** 该服务器通过 stdio 在你自己的机器上运行 —— 除非你将其改适为通过 HTTP 运行并添加自己的身份验证层，否则无法在团队中共享。
-- **无额外的限流机制。** 除了 EffiLink API 自身的限制外，服务器不内置额外的限流。参见 [Rate Limits](/docs/rate-limits)（英文页面）。
+- **无额外的限流机制。** 除了 EffiLink API 自身的限制外，服务器不内置额外的限流。参见 [速率限制](/zh/docs/rate-limits)。
 
 <Card title="寻找只读文档服务器？" icon="magnifying-glass" href="/zh/docs/mcp-server">
   查看 MCP 服务器页面，了解让 AI 工具搜索并引用 EffiLink 文档的服务器。
