@@ -10,7 +10,7 @@ description: "A self-hosted MCP server that lets AI clients call the EffiLink Tr
 
 ## What it does
 
-This server exposes a single tool, **`call_api`**, which lets a connected AI client call the [Transactional Messaging API](/api-reference) directly — for example, sending a transactional email, sending a batch, or fetching a delivery report — without you having to write the request by hand.
+This server exposes a single tool, **`call_api`**, which lets a connected AI client call the [Transactional Messaging API](/api/transactional-send) directly — for example, sending a transactional email, sending a batch, or fetching a delivery report — without you having to write the request by hand.
 
 <Warning>
   Because this server can take real, billable actions on your account, only install it where you intend that, and treat your API key with the same care you would in any backend service. Never share a running instance's access with people you don't trust with your account.
@@ -100,7 +100,7 @@ Once connected, you could ask your AI client things like:
 - "Send a batch of order confirmation emails to this list of customers." _(with the list provided in the conversation)_
 - "Look up the delivery status of message ID abc123."
 
-The client will call `call_api` with the correct path, method, and body based on the [API reference](/api-reference).
+The client will call `call_api` with the correct path, method, and body based on the [API reference](/api/transactional-send).
 
 ## Limitations
 
