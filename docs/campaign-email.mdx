@@ -4,6 +4,19 @@ sidebarTitle: "Campaign Email"
 description: "Create and send bulk marketing emails to segmented contact lists using EffiLink's campaign API with scheduling and exclusion list support."
 ---
 
+## Before you start
+
+<Steps>
+  <Step title="Get your API key">
+    Retrieve your API key from your EffiLink account settings. See the [Quick Start](/docs/quickstart) for details.
+  </Step>
+  <Step title="Configure your sender">
+    Set up your sending domain and sender before sending emails. See [how to set up your senders](/api/senders) for instructions.
+  </Step>
+</Steps>
+
+---
+
 Marketing campaign emails are bulk messages sent to one or more contact lists — newsletters, product announcements, promotional offers, re-engagement sequences, and similar outbound communications. Unlike transactional email, campaign sends are audience-driven: you define _who_ receives the message by targeting named contact lists in your EffiLink account.
 
 The `/v5/campaign/mail/sends` endpoint lets you compose a campaign, target lists, apply exclusions, schedule delivery, and optionally save a draft without sending — all through a single API call.
