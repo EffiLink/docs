@@ -9,13 +9,13 @@ EffiLink publishes a [Model Context Protocol](https://modelcontextprotocol.io) (
 <Info>
   This server is **read-only**. It searches and returns documentation content — it does not send emails or SMS, create contacts, or call any authenticated EffiLink API on your behalf. 
 
-  To make live API calls, use MCP Action Server or authenticate directly with your API key through the  [REST API](/api/transactional-send) directly.
+  To make live API calls, use the [MCP Action Server](/docs/mcp-action-server) or authenticate directly with your API key through the [REST API](/api/transactional-send).
 </Info>
 
 ## Server URL
 
 ```text
-https://developer.effilink.co/mcp
+https://developers.effilink.co/mcpQuery
 ```
 
 Transport: **HTTP**. No authentication is required to connect, since the server only exposes public documentation content.
@@ -35,7 +35,7 @@ Transport: **HTTP**. No authentication is required to connect, since the server 
     {
       "mcpServers": {
         "effilink": {
-          "url": "https://developer.effilink.co/mcp"
+          "url": "https://developers.effilink.co/mcpQuery"
         }
       }
     }
