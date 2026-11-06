@@ -1,7 +1,6 @@
 ---
 title: "Webhook 配置"
 sidebarTitle: "Webhook  配置"
-description: "配置 EffiLink Webhooks 接收实时邮件事件通知。了解如何配置、载荷格式、安全最佳实践和事件类型。"
 ---
 
 Webhooks 让 EffiLink 可以近乎实时地将邮件事件数据主动推送到您自己的 HTTP 端点，无需轮询。每当发生重要事件（邮件已送达、链接被点击、收件人退订等）时，EffiLink 会将事件批量打包，以 JSON 形式 POST 到您配置的 URL。这使 Webhooks 成为构建实时看板、驱动分析管道、触发自动化流程和维护平台外审计日志的合适工具。
@@ -42,7 +41,7 @@ Webhooks 让 EffiLink 可以近乎实时地将邮件事件数据主动推送到�
 
 ### 通过 API
 
-使用 [Webhook 配置 API](/api/webhook-config) 以编程方式读取或更新 Webhook 设置。
+使用 [Webhook 配置 API](https://developers.effilink.co/zh/api/webhook-config) 以编程方式读取或更新 Webhook 设置。
 
 **获取当前配置——`POST /v5/webhook/get`**
 
