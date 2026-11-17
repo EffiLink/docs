@@ -1,10 +1,10 @@
 ---
 title: "MCP Server"
 sidebarTitle: "MCP Server"
-description: "Connect AI clients to EffiLink's hosted MCP server so they can send transactional emails and fetch delivery reports through the EffiLink API on your behalf."
+description: "Connect AI clients to EffiLink's hosted MCP server so they can send transactional emails through the EffiLink API on your behalf."
 ---
 
-EffiLink hosts a remote [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server at `https://api.effilink.co/mcp`. Once an AI client or agent connects to it with your API key, it can send transactional emails and work with the Transactional Email API for you, without you writing each request by hand.
+EffiLink hosts a remote [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server at `https://api.effilink.co/mcp`. Once an AI client or agent connects to it with your API key, it can send transactional emails for you, without you writing each API request by hand.
 
 <Warning>
   This server performs **real, authenticated actions on your account**, including sending real emails that use your credits. Connect it only to clients and agents you trust, and keep your API key as private as you would in any backend service.
@@ -18,6 +18,7 @@ EffiLink hosts a remote [Model Context Protocol](https://modelcontextprotocol.io
 | **Transport** | HTTP (remote server, nothing to install or host) |
 | **Authentication** | Your EffiLink API key in the `ApiKey` request header |
 | **Scope** | Transactional Email API |
+| **Sandbox mode** | Supported |
 | **Read-only documentation search** | Use the [MCP Query Server](/docs/mcp-server) instead |
 
 ## Before you start
@@ -71,32 +72,36 @@ The server authenticates every connection with the `ApiKey` header, the same hea
 
 ## What it can do
 
-After connecting, the client reads the list of tools the server publishes, so it always sees the current tool names and input schemas. The tools cover the [Transactional Email API](/api/transactional-send):
+The server currently provides one tool:
 
-- **Send a transactional email** to a single recipient, with your own HTML or a saved template, personalization tags, optional scheduling, tracking and an attachment. See [Transactional Email](/docs/transactional-email).
-- **Send emails in batch** with personalized versions of the same message. See the [batch API reference](/api/transactional-batch).
-- **Fetch delivery reports** for messages you have sent. See the [report API reference](/api/transactional-report).
+- **Send a transactional email.** Sends an email to a recipient through the [Transactional Email API](/api/transactional-send). See [Transactional Email](/docs/transactional-email) for the fields it accepts.
 
-Each action behaves the same as the matching REST API endpoint, so the request fields, limits and error codes in those pages apply.
+After connecting, the client reads the list of available tools from the server, so it always sees the current tool names and input schemas.
+
+<Info>
+  More tools will be added over time. This page will be updated as they become available.
+</Info>
+
+The tool follows the same rules as the matching REST API endpoint, so the request fields, limits and error codes in the API reference apply.
 
 ## Example prompts
 
 Once connected, you can ask your AI client things like:
 
 - "Send a password reset email to [jane@example.com](mailto:jane@example.com) using our reset template."
-- "Send an order confirmation to each customer in this list." _(with the list provided in the conversation)_
-- "Look up the delivery status of message ID abc123."
+- "Send an order confirmation to [order-123@example.com](mailto:order-123@example.com) in sandbox mode."
+- "Send a welcome email to our new user, then show me the request you used."
 
 ## Safety and testing
 
-- **Real emails are sent.** Unless a request is made in test mode, the server sends actual email and uses your credits.
-- **Test first.** The REST API supports `sandboxMode`, which validates a request without sending anything. See [Sandbox Mode](/docs/sandbox-mode), and ask your agent to use it for a first trial.
+- **Real emails are sent.** Unless a request uses sandbox mode, the server sends actual email and uses your credits.
+- **Test first.** The server supports sandbox mode, which validates a request without sending anything. See [Sandbox Mode](/docs/sandbox-mode), and ask your agent to use it for a first trial.
 - **Control what the agent can do.** Many clients let you approve each tool call. Keep that on until you trust the workflow.
 - **Rotate a leaked key.** If your API key is exposed, replace it in your account settings and update your client config.
 
 ## Limitations
 
-- **Transactional email only.** Campaigns, SMS, contacts, senders and webhook settings are not available through this server. Use the [REST API](/api/transactional-send) for those.
+- **Sending only, for now.** Batch sending, delivery reports, campaigns, SMS, contacts, senders and webhook settings are not available through this server yet. Use the [REST API](/api/transactional-send) for those.
 - **Verified sender required.** `senderMail` must be registered and verified in your account, or the request is rejected.
 - **Same limits as the API.** The server follows EffiLink's own rate limits and credit rules. See [Limits & Quotas](/docs/rate-limits).
 

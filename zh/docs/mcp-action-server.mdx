@@ -1,10 +1,10 @@
 ---
 title: "MCP 服务"
 sidebarTitle: "MCP 服务"
-description: "将 AI 客户端连接到 EffiLink 托管的 MCP 服务，让它们代表你通过 EffiLink API 发送事务性邮件并获取投递报告。"
+description: "将 AI 客户端连接到 EffiLink 托管的 MCP 服务，让它们代表你通过 EffiLink API 发送事务性邮件。"
 ---
 
-EffiLink 在 `https://api.effilink.co/mcp` 提供一个托管的远程 [Model Context Protocol](https://modelcontextprotocol.io)（MCP）服务。AI 客户端或智能体使用你的 API 密钥连接后，就可以代表你发送事务性邮件并使用事务性邮件 API，而无需你手动编写每个请求。
+EffiLink 在 `https://api.effilink.co/mcp` 提供一个托管的远程 [Model Context Protocol](https://modelcontextprotocol.io)（MCP）服务。AI 客户端或智能体使用你的 API 密钥连接后，就可以代表你发送事务性邮件，而无需你手动编写每个 API 请求。
 
 <Warning>
   该服务会对你的账户执行**真实且经过身份验证的操作**，包括发送真实邮件并消耗你的额度。请仅将它连接到你信任的客户端和智能体，并像对待任何后端服务中的密钥一样妥善保管你的 API 密钥。
@@ -18,6 +18,7 @@ EffiLink 在 `https://api.effilink.co/mcp` 提供一个托管的远程 [Model Co
 | **传输方式** | HTTP（远程服务，无需安装或自行托管） |
 | **身份验证** | 在 `ApiKey` 请求头中携带你的 EffiLink API 密钥 |
 | **功能范围** | 事务性邮件 API |
+| **沙盒模式** | 支持 |
 | **只读文档检索** | 请使用 [MCP 检索服务](/zh/docs/mcp-server) |
 
 ## 开始之前
@@ -71,32 +72,36 @@ EffiLink 在 `https://api.effilink.co/mcp` 提供一个托管的远程 [Model Co
 
 ## 它能做什么
 
-连接后，客户端会读取该服务发布的工具列表，因此总能看到当前的工具名称和输入结构。这些工具覆盖[事务性邮件 API](/zh/api/transactional-send)：
+该服务目前提供一个工具：
 
-- **发送事务性邮件**：发送给单个收件人，可使用自定义 HTML 或已保存的模板，支持个性化标签、定时发送、跟踪和附件。参见[事务邮件](/zh/docs/transactional-email)。
-- **批量发送邮件**：用同一封邮件的多个个性化版本批量发送。参见[批量发送 API 参考](/zh/api/transactional-batch)。
-- **获取投递报告**：查看你已发送邮件的投递情况。参见[报告 API 参考](/zh/api/transactional-report)。
+- **发送事务性邮件。** 通过[事务性邮件 API](/zh/api/transactional-send) 向收件人发送邮件。可用字段请参见[事务邮件](/zh/docs/transactional-email)。
 
-每个操作的行为都与对应的 REST API 端点一致，因此这些页面中的请求字段、限制和错误代码同样适用。
+连接后，客户端会从服务读取可用工具列表，因此总能看到当前的工具名称和输入结构。
+
+<Info>
+  后续会陆续增加更多工具，本页面也会随之更新。
+</Info>
+
+该工具遵循与对应 REST API 端点相同的规则，因此 API 参考中的请求字段、限制和错误代码同样适用。
 
 ## 示例提问
 
 连接后，你可以向 AI 客户端提出类似这样的请求：
 
 - "向 [jane@example.com](mailto:jane@example.com) 发送一封使用我们重置模板的密码重置邮件。"
-- "给这个名单里的每位客户发送订单确认邮件。"（并在对话中提供具体名单）
-- "查询消息 ID abc123 的投递状态。"
+- "以沙盒模式向 [order-123@example.com](mailto:order-123@example.com) 发送一封订单确认邮件。"
+- "给我们的新用户发送一封欢迎邮件，并展示你使用的请求。"
 
 ## 安全与测试
 
-- **会发送真实邮件。** 除非请求以测试模式发出，否则该服务会实际发送邮件并消耗你的额度。
-- **先测试。** REST API 支持 `sandboxMode`，它会校验请求但不发送任何内容。参见[沙盒模式](/zh/docs/sandbox-mode)，并让你的智能体在首次试用时使用它。
+- **会发送真实邮件。** 除非请求使用沙盒模式，否则该服务会实际发送邮件并消耗你的额度。
+- **先测试。** 该服务支持沙盒模式，它会校验请求但不发送任何内容。参见[沙盒模式](/zh/docs/sandbox-mode)，并让你的智能体在首次试用时使用它。
 - **控制智能体的权限。** 许多客户端允许你逐次批准工具调用。在你信任该流程之前，请保持开启。
 - **轮换泄露的密钥。** 如果你的 API 密钥已泄露，请在账户设置中更换，并更新客户端配置。
 
 ## 限制
 
-- **仅限事务性邮件。** 该服务无法访问营销活动、短信、联系人、发件人和 Webhook 设置。这些功能请使用 [REST API](/zh/api/transactional-send)。
+- **目前仅支持发送。** 批量发送、投递报告、营销活动、短信、联系人、发件人和 Webhook 设置暂无法通过该服务使用。这些功能请使用 [REST API](/zh/api/transactional-send)。
 - **需要已验证的发件人。** `senderMail` 必须已在你的账户中注册并通过验证，否则请求会被拒绝。
 - **与 API 相同的限制。** 该服务遵循 EffiLink 自身的速率限制和额度规则。参见[速率限制](/zh/docs/rate-limits)。
 
