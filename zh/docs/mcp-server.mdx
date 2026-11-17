@@ -9,7 +9,7 @@ EffiLink 为本文档站点发布了一个 [Model Context Protocol](https://mode
 <Info>
   本服务为只读检索服务，仅查询并返回文档内容，不会代发邮件、短信、创建联系人，也不会调用任何需鉴权的 EffiLink API。
 
-  如需发起真实 API 调用，请使用 MCP 发送服务（MCP Action Server），或直接使用您的 API 密钥调用[REST API](/zh/api/transactional-send)。
+  如需发起真实 API 调用，请使用 [MCP 服务](/zh/docs/mcp-action-server)（MCP Server），或直接使用您的 API 密钥调用[REST API](/zh/api/transactional-send)。
 </Info>
 
 ## 服务端地址
@@ -89,7 +89,7 @@ https://developers.effilink.co/mcpQuery
 - **存在速率限制。** EffiLink 会对该服务施加速率限制，以在高负载下保障其可用性。
 
 <Card title="想执行真实操作？" icon="bolt" href="/zh/docs/mcp-action-server">
-  查看 MCP 操作服务页面，了解如何使用自托管服务器，让 AI 客户端凭你自己的 API 密钥调用事务性消息 API —— 包括发送真实消息。
+  查看 MCP 服务页面，了解 EffiLink 托管的服务如何让 AI 客户端凭你自己的 API 密钥发送事务性邮件。
 </Card>
 
 <Card title="需要 API 密钥？" icon="key" href="https://app.effilink.co/setting/apiKey">

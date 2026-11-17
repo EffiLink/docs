@@ -1,113 +1,110 @@
 ---
-title: "MCP Action Server"
-sidebarTitle: "MCP Action Server"
-description: "A self-hosted MCP server that lets AI clients call the EffiLink Transactional Messaging API on your behalf."
+title: "MCP Server"
+sidebarTitle: "MCP Server"
+description: "Connect AI clients to EffiLink's hosted MCP server so they can send transactional emails through the EffiLink API on your behalf."
 ---
 
-<Info>
-  This is a **separate server** and this one is **self-hosted by you** and can perform real, authenticated actions — including sending real messages — using your own API key.
-</Info>
-
-## What it does
-
-This server exposes a single tool, **`call_api`**, which lets a connected AI client call the [Transactional Messaging API](/api/transactional-send) directly — for example, sending a transactional email, sending a batch, or fetching a delivery report — without you having to write the request by hand.
+EffiLink hosts a remote [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server at `https://api.effilink.co/mcp`. Once an AI client or agent connects to it with your API key, it can send transactional emails for you, without you writing each API request by hand.
 
 <Warning>
-  Because this server can take real, billable actions on your account, only install it where you intend that, and treat your API key with the same care you would in any backend service. Never share a running instance's access with people you don't trust with your account.
+  This server performs **real, authenticated actions on your account**, including sending real emails that use your credits. Connect it only to clients and agents you trust, and keep your API key as private as you would in any backend service.
 </Warning>
 
-## How it works
+## Quick reference
 
-The server runs locally as a child process of your MCP client (stdio transport), not as a public endpoint. Your API key lives in an environment variable on your machine — the AI model itself never sees or handles the key. When the model calls `call_api`, the server attaches the key server-side and forwards the request to `https://api.effilink.co`.
+|  |  |
+| --- | --- |
+| **Server URL** | `https://api.effilink.co/mcp` |
+| **Transport** | HTTP (remote server, nothing to install or host) |
+| **Authentication** | Your EffiLink API key in the `ApiKey` request header |
+| **Scope** | Transactional Email API |
+| **Sandbox mode** | Supported |
+| **Read-only documentation search** | Use the [MCP Query Server](/docs/mcp-server) instead |
 
-For safety, the server only allows paths under `/v5/transactional/`. A call to any other path is refused before a network request is made.
-
-## Setup
+## Before you start
 
 <Steps>
-  <Step title="Get the server code">
-    Download the `effilink-mcp-server` project (`index.js`, `package.json`, `README.md`) and install dependencies:
+  <Step title="Get your API key">
+    Create an API key in your EffiLink account settings. See [API Keys](/docs/api-keys) for details.
+  </Step>
+  <Step title="Configure your sender">
+    Set up your sending domain and sender before sending emails. See [how to set up your senders](/api/senders) for instructions.
+  </Step>
+</Steps>
+
+## Connect a client
+
+The server authenticates every connection with the `ApiKey` header, the same header the REST API uses. Your client must be able to send a custom header when it connects.
+
+<Tabs>
+  <Tab title="Claude Code">
+    Run this command in your terminal:
 
     ```bash
-    npm install
+    claude mcp add --transport http effilink https://api.effilink.co/mcp \
+      --header "ApiKey: your_api_key_here"
     ```
-  </Step>
-  <Step title="Set your API key">
-    Get an API key from your [account settings](https://app.effilink.co/setting/apiKey), then export it as an environment variable:
-
-    ```bash
-    export EFFILINK_API_KEY="your_api_key_here"
-    ```
-  </Step>
-  <Step title="Add it to your MCP client">
-    Point your client at the server's entry file. For Claude Desktop or Cursor, add this to your MCP config:
+  </Tab>
+  <Tab title="Cursor">
+    Add the server to your MCP config (usually `~/.cursor/mcp.json` or via **Settings → MCP**):
 
     ```json
     {
       "mcpServers": {
         "effilink": {
-          "command": "node",
-          "args": ["/absolute/path/to/effilink-mcp-server/index.js"],
-          "env": {
-            "EFFILINK_API_KEY": "your_api_key_here"
+          "url": "https://api.effilink.co/mcp",
+          "headers": {
+            "ApiKey": "your_api_key_here"
           }
         }
       }
     }
     ```
-  </Step>
-  <Step title="Test in sandbox mode">
-    Try a call with `sandboxMode: true` first — see the example below — so you can confirm everything is wired up correctly before sending anything real.
-  </Step>
-</Steps>
+  </Tab>
+  <Tab title="Other MCP clients">
+    Any client that supports remote HTTP MCP servers **and lets you set a custom request header** can connect. Use the server URL above and add the header `ApiKey: your_api_key_here`. Clients that cannot send custom headers, such as some web-based connector screens, cannot connect with an API key.
+  </Tab>
+</Tabs>
 
-## The `call_api` tool
+<Tip>
+  Replace `your_api_key_here` with your own key. Avoid committing config files that contain your key to source control.
+</Tip>
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `path` | string | yes | API path relative to `https://api.effilink.co`, must start with `/v5/transactional/` |
-| `method` | `GET` \| `POST` \| `PUT` \| `DELETE` | no (default `POST`) | HTTP method |
-| `body` | object | no | JSON request body |
-| `query` | object | no | Query string parameters |
+## What it can do
 
-### Example: send a transactional email
+The server currently provides one tool:
 
-```json
-call_api({
-  "path": "/v5/transactional/mail/sends_customised",
-  "method": "POST",
-  "body": {
-    "subject": "Your order has shipped",
-    "content": "<p>Hello {{name}}, your order {{orderId}} has shipped!</p>",
-    "params": { "name": "Jane", "orderId": "ORD-5678" },
-    "senderMail": "noreply@yourdomain.com",
-    "senderName": "Your Store",
-    "to": { "email": "jane@example.com", "name": "Jane Smith" },
-    "trackOpen": 1,
-    "trackClick": 1,
-    "sandboxMode": true
-  }
-})
-```
+- **Send a transactional email.** Sends an email to a recipient through the [Transactional Email API](/api/transactional-send). See [Transactional Email](/docs/transactional-email) for the fields it accepts.
 
-With `sandboxMode: true`, the request is validated end-to-end but no real email is sent — see [Sandbox Mode](/docs/sandbox-mode). Drop that flag once you're ready to send for real.
+After connecting, the client reads the list of available tools from the server, so it always sees the current tool names and input schemas.
+
+<Info>
+  More tools will be added over time. This page will be updated as they become available.
+</Info>
+
+The tool follows the same rules as the matching REST API endpoint, so the request fields, limits and error codes in the API reference apply.
 
 ## Example prompts
 
-Once connected, you could ask your AI client things like:
+Once connected, you can ask your AI client things like:
 
 - "Send a password reset email to [jane@example.com](mailto:jane@example.com) using our reset template."
-- "Send a batch of order confirmation emails to this list of customers." _(with the list provided in the conversation)_
-- "Look up the delivery status of message ID abc123."
+- "Send an order confirmation to [order-123@example.com](mailto:order-123@example.com) in sandbox mode."
+- "Send a welcome email to our new user, then show me the request you used."
 
-The client will call `call_api` with the correct path, method, and body based on the [API reference](/api/transactional-send).
+## Safety and testing
+
+- **Real emails are sent.** Unless a request uses sandbox mode, the server sends actual email and uses your credits.
+- **Test first.** The server supports sandbox mode, which validates a request without sending anything. See [Sandbox Mode](/docs/sandbox-mode), and ask your agent to use it for a first trial.
+- **Control what the agent can do.** Many clients let you approve each tool call. Keep that on until you trust the workflow.
+- **Rotate a leaked key.** If your API key is exposed, replace it in your account settings and update your client config.
 
 ## Limitations
 
-- **Scoped to Transactional Messaging.** Only `/v5/transactional/*` paths are allowed by default. Campaigns, SMS, and contacts endpoints aren't reachable unless you extend the `ALLOWED_PREFIX` in the server code.
-- **Local by default.** The server runs via stdio on your own machine — it isn't shared across a team unless you adapt it to run over HTTP with its own authentication layer in front.
-- **No built-in rate limiting beyond EffiLink's own API limits.** See [Limits & Quotas](/docs/rate-limits).
+- **Sending only, for now.** Batch sending, delivery reports, campaigns, SMS, contacts, senders and webhook settings are not available through this server yet. Use the [REST API](/api/transactional-send) for those.
+- **Verified sender required.** `senderMail` must be registered and verified in your account, or the request is rejected.
+- **Same limits as the API.** The server follows EffiLink's own rate limits and credit rules. See [Limits & Quotas](/docs/rate-limits).
 
 <Card title="Looking for the read-only docs server?" icon="magnifying-glass" href="/docs/mcp-server">
-  See the MCP Server page for the server that lets AI tools search and cite EffiLink documentation.
+  See the MCP Query Server page for the server that lets AI tools search and cite EffiLink documentation.
 </Card>
