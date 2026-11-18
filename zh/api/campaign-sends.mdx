@@ -40,6 +40,10 @@ title: "发送营销活动"
   定时发送时间,采用 ISO 8601 UTC 格式(例如 `2025-06-01T10:00:00Z`)。省略则立即发送。
 </ParamField>
 
+<ParamField body="expireDate" type="string">
+  自定义过期时间,采用 ISO 8601 UTC 格式(例如 `2025-06-01T10:00:00Z`)。
+</ParamField>
+
 <ParamField body="onlySave" type="boolean">
   设置为 `true` 将任务保存为草稿而不发送。当 `true` 时,`sendListNames` 不是必填项。默认为 `false`。
 </ParamField>

@@ -46,6 +46,10 @@ Creates a new campaign email send task. The task can be saved immediately withou
   Scheduled send time in ISO 8601 UTC format (e.g., `2025-06-01T10:00:00Z`). Omit to send immediately.
 </ParamField>
 
+<ParamField body="expireDate" type="string">
+  Custom expiration time in ISO 8601 UTC format (e.g., `2025-06-01T10:00:00Z`).
+</ParamField>
+
 <ParamField body="onlySave" type="boolean">
   Set to `true` to save the task as a draft without sending. When `true`, `sendListNames` is not required. Defaults to `false`.
 </ParamField>
