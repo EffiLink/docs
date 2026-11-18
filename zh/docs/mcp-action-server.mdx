@@ -1,10 +1,10 @@
 ---
 title: "MCP 服务"
 sidebarTitle: "MCP 服务"
-description: "将 AI 客户端连接到 EffiLink 托管的 MCP 服务，让它们代表你通过 EffiLink API 发送事务性邮件。"
+description: "将 AI 客户端连接到 EffiLink 托管的 MCP 服务，让它们代表您通过 EffiLink API 发送事务性邮件。"
 ---
 
-EffiLink 在 `https://api.effilink.co/mcp` 提供一个托管的远程 [Model Context Protocol](https://modelcontextprotocol.io)（MCP）服务。AI 客户端或智能体使用你的 API 密钥连接后，就可以代表你发送事务性邮件，而无需你手动编写每个 API 请求。
+EffiLink 在 `https://api.effilink.co/mcp` 提供一个托管的远程 [Model Context Protocol](https://modelcontextprotocol.io)（MCP）服务。AI 客户端或智能体使用您的 API 密钥连接后，就可以代表您发送事务性邮件，而无需您手动编写每个 API 请求。
 
 <Warning>
   该服务会对你的账户执行**真实且经过身份验证的操作**，包括发送真实邮件并消耗你的额度。请仅将它连接到你信任的客户端和智能体，并像对待任何后端服务中的密钥一样妥善保管你的 API 密钥。
@@ -25,7 +25,7 @@ EffiLink 在 `https://api.effilink.co/mcp` 提供一个托管的远程 [Model Co
 
 <Steps>
   <Step title="获取 API 密钥">
-    在你的 EffiLink 账户设置中创建 API 密钥。详情请参阅 [API 密钥](/zh/docs/api-keys)。
+    在您的 EffiLink 账户设置中创建 API 密钥。详情请参阅 [API 密钥](/zh/docs/api-keys)。
   </Step>
   <Step title="配置发件人">
     发送邮件之前，请先设置发件域名和发件人。设置方法请参阅[发件人配置](/zh/api/senders)。
@@ -34,7 +34,7 @@ EffiLink 在 `https://api.effilink.co/mcp` 提供一个托管的远程 [Model Co
 
 ## 连接客户端
 
-该服务使用 `ApiKey` 请求头对每个连接进行身份验证，与 REST API 使用的请求头相同。你的客户端必须能够在连接时发送自定义请求头。
+该服务使用 `ApiKey` 请求头对每个连接进行身份验证，与 REST API 使用的请求头相同。您的客户端必须能够在连接时发送自定义请求头。
 
 <Tabs>
   <Tab title="Claude Code">
@@ -86,7 +86,7 @@ EffiLink 在 `https://api.effilink.co/mcp` 提供一个托管的远程 [Model Co
 
 ## 示例提问
 
-连接后，你可以向 AI 客户端提出类似这样的请求：
+连接后，您可以向 AI 客户端提出类似这样的请求：
 
 - "向 [jane@example.com](mailto:jane@example.com) 发送一封使用我们重置模板的密码重置邮件。"
 - "以沙盒模式向 [order-123@example.com](mailto:order-123@example.com) 发送一封订单确认邮件。"
@@ -94,15 +94,15 @@ EffiLink 在 `https://api.effilink.co/mcp` 提供一个托管的远程 [Model Co
 
 ## 安全与测试
 
-- **会发送真实邮件。** 除非请求使用沙盒模式，否则该服务会实际发送邮件并消耗你的额度。
-- **先测试。** 该服务支持沙盒模式，它会校验请求但不发送任何内容。参见[沙盒模式](/zh/docs/sandbox-mode)，并让你的智能体在首次试用时使用它。
-- **控制智能体的权限。** 许多客户端允许你逐次批准工具调用。在你信任该流程之前，请保持开启。
-- **轮换泄露的密钥。** 如果你的 API 密钥已泄露，请在账户设置中更换，并更新客户端配置。
+- **会发送真实邮件。** 除非请求使用沙盒模式，否则该服务会实际发送邮件并消耗您的额度。
+- **先测试。** 该服务支持沙盒模式，它会校验请求但不发送任何内容。参见[沙盒模式](/zh/docs/sandbox-mode)，并让您的智能体在首次试用时使用它。
+- **控制智能体的权限。** 许多客户端允许你逐次批准工具调用。在您信任该流程之前，请保持开启。
+- **轮换泄露的密钥。** 如果您的 API 密钥已泄露，请在账户设置中更换，并更新客户端配置。
 
 ## 限制
 
 - **目前仅支持发送。** 批量发送、投递报告、营销活动、短信、联系人、发件人和 Webhook 设置暂无法通过该服务使用。这些功能请使用 [REST API](/zh/api/transactional-send)。
-- **需要已验证的发件人。** `senderMail` 必须已在你的账户中注册并通过验证，否则请求会被拒绝。
+- **需要已验证的发件人。** `senderMail` 必须已在您的账户中注册并通过验证，否则请求会被拒绝。
 - **与 API 相同的限制。** 该服务遵循 EffiLink 自身的速率限制和额度规则。参见[速率限制](/zh/docs/rate-limits)。
 
 <Card title="寻找只读文档服务？" icon="magnifying-glass" href="/zh/docs/mcp-server">
