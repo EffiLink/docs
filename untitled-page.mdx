@@ -1,0 +1,59 @@
+---
+title: "资源图片"
+---
+
+## 概述
+
+用于邮件任务中的图片资源。
+
+`POST /v5/campaign/mail/uploadImageToGallery`
+
+---
+
+## 请求参数
+
+<ParamField body="fileData" type="string" required>
+  base64编码的二进制图片数据。大小不超过2M，支持 jpeg、 jpg、png、bmp、gif格式。
+</ParamField>
+
+---
+
+## 响应
+
+<ResponseField name="code" type="int">
+  HTTP 风格的状态代码。成功时为 `200`。
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  人类可读的状态消息。成功时为 `null` 或空字符串。
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  该图片在公网上的访问Url。
+</ResponseField>
+
+---
+
+## 请求示例
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/uploadImageToGallery \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "fileData": "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AVN//2Q=="
+  }'
+```
+
+---
+
+## 响应示例
+
+```json
+{
+  "code": 200,
+  "message": null,
+  "url": "https://service.campaigndelivery.cn/fckattach/marketing/xxxxxx.png"
+}
+```

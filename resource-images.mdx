@@ -1,0 +1,59 @@
+---
+title: "Resource Images"
+---
+
+## Overview
+
+Image resources used for email tasks.
+
+`POST /v5/campaign/mail/uploadImageToGallery`
+
+---
+
+## Request Parameters
+
+<ParamField body="fileData" type="string" required>
+  Base64 encoded binary image data. The size is no more than 2M and supports formats such as jpeg, jpg, png, bmp, and gif.
+</ParamField>
+
+---
+
+## Response
+
+<ResponseField name="code" type="int">
+  HTTP-style status code. `200` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  A human-readable status message. `null` or empty string on success.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The access URL of this image on the public network.
+</ResponseField>
+
+---
+
+## Example Request
+
+```bash
+curl --request POST \
+  --url https://api.effilink.co/v5/campaign/mail/uploadImageToGallery \
+  --header 'Content-Type: application/json' \
+  --header 'ApiKey: YOUR_API_KEY' \
+  --data '{
+    "fileData": "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AVN//2Q=="
+  }'
+```
+
+---
+
+## Example Response
+
+```json
+{
+  "code": 200,
+  "message": null,
+  "url": "https://service.campaigndelivery.cn/fckattach/marketing/xxxxxx.png"
+}
+```
