@@ -4,7 +4,7 @@ title: "资源图片"
 
 ## 概述
 
-用于邮件任务中的图片资源。
+上传图片文件到 Effilink 平台，可在邮件内容中引用。
 
 `POST /v5/campaign/mail/uploadImageToGallery`
 
@@ -13,7 +13,7 @@ title: "资源图片"
 ## 请求参数
 
 <ParamField body="fileData" type="string" required>
-  base64编码的二进制图片数据。大小不超过2M，支持 jpeg、 jpg、png、bmp、gif格式。
+  base64编码的二进制图片数据。大小不超过2M，支持 jpeg、 jpg、png、bmp、gif、webp、tiff格式。
 </ParamField>
 
 ---
