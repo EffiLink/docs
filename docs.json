@@ -113,7 +113,7 @@
                   "api/campaign-abtest",
                   "api/campaign-templates",
                   "api/campaign-report",
-                  "resource-images"
+                  "api/resource-images"
                 ]
               },
               {
@@ -241,7 +241,7 @@
                   "zh/api/campaign-abtest",
                   "zh/api/campaign-templates",
                   "zh/api/campaign-report",
-                  "untitled-page"
+                  "zh/api/resource-images"
                 ]
               },
               {
